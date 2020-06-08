@@ -41,7 +41,7 @@ def main(args):
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
+    args.model = "HorizontalNetworkV44"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
