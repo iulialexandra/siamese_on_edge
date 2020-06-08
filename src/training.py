@@ -24,7 +24,7 @@ def main(args):
     args.write_to_tensorboard = False
     args.save_weights = True
     args.console_print = True
-    args.num_epochs = 100
+    args.num_epochs = 1
     args.n_val_ways = 5
     args.evaluate_every = 10
     args.n_val_tasks = 1000
@@ -40,8 +40,8 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
+    args.dataset = "roshambo"
+    args.model = "OriginalNetworkV2Divided"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":

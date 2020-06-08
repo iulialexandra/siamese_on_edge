@@ -1,6 +1,6 @@
 from keras.models import Model, Sequential
 from keras.layers import Conv2D, MaxPool2D, MaxPooling2D, Flatten, BatchNormalization, Dense, Input, Dropout, \
-    concatenate, Lambda
+    concatenate, Lambda, Subtract
 import tensorflow as tf
 from keras.optimizers import Adam, SGD
 from keras.regularizers import l2
@@ -93,12 +93,12 @@ class OriginalNetworkV2Divided:
         self.right_classif_factor = right_classif_factor
         self.siamese_factor = siamese_factor
 
-    def get_embedding(self, inputs):
+    def get_embedding(self, inputs, branch):
         convnet = Conv2D(filters=64, kernel_size=(7, 7),
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv1')(inputs)
+                         name='Conv1' + branch)(inputs)
         convnet = MaxPooling2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -106,7 +106,7 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv2')(convnet)
+                         name='Conv2' + branch)(convnet)
         convnet = MaxPooling2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -114,7 +114,7 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv3')(convnet)
+                         name='Conv3' + branch)(convnet)
         convnet = MaxPool2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -122,42 +122,27 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv4')(convnet)
+                         name='Conv4' + branch)(convnet)
         convnet = MaxPool2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
         convnet = Flatten()(convnet)
         convnet = Dense(4096, activation="relu", kernel_regularizer=l2(1e-3),
-                        kernel_initializer="he_normal")(convnet)
-        model = Model(inputs, convnet)
-        return convnet, model
+                        kernel_initializer="he_normal", name="Dense1" + branch)(convnet)
+        return convnet
 
     def build_siamese(self, num_outputs, model_l, model_r):
-        DistanceLayer = Lambda(lambda tensors: tf.square(tensors[0] - tensors[1]))
-        # call this layer on list of two input tensors.
-        dist = DistanceLayer([model_l.output, model_r.output])
+
+        subtraction_layer = Subtract()([model_l, model_r])
         siamese_prediction = Dense(1, activation='sigmoid',
-                                   name="Siamese_classification")(dist)
+                                   name="Siamese_classification")(subtraction_layer)
 
         right_branch_classif = Dense(num_outputs, activation='softmax',
-                                     name="Right_branch_classification")(model_r.output)
+                                     name="Right_branch_classification")(model_r)
 
         left_branch_classif = Dense(num_outputs, activation='softmax',
-                                    name="Left_branch_classification")(model_l.output)
+                                    name="Left_branch_classification")(model_l)
 
-        siamese_net = Model(inputs=[model_l.input, model_r.input],
-                            outputs=[left_branch_classif, siamese_prediction, right_branch_classif])
-
-        siamese_net.compile(loss={"Left_branch_classification": "categorical_crossentropy",
-                                  "Siamese_classification": "binary_crossentropy",
-                                  "Right_branch_classification": "categorical_crossentropy"},
-                            optimizer=self.optimizer,
-                            metrics={"Left_branch_classification": "accuracy",
-                                     "Siamese_classification": "accuracy",
-                                     "Right_branch_classification": "accuracy"},
-                            loss_weights={"Left_branch_classification": self.left_classif_factor,
-                                          "Siamese_classification": self.siamese_factor,
-                                          "Right_branch_classification": self.right_classif_factor})
-        return siamese_net
+        return siamese_prediction, left_branch_classif, right_branch_classif
 
 
 class OriginalNetworkV3:
