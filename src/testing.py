@@ -31,9 +31,8 @@ def main(args):
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
-    args.model = "OriginalNetworkV2Divided"
+    args.model = "HorizontalNetworkV5"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
-    args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge/results/2020_6_4-12_24_32_943695_seed_13_tiny-imagenet_OriginalNetworkV2Divided_yes/weights.h5"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)

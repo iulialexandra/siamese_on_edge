@@ -8,17 +8,17 @@ import tensorflow as tf
 import tools.utils as util
 import tools.visualization as vis
 import data_processing.dataset_utils as dat
-import tensorflow.keras.backend as K
-from tensorflow.keras.utils import to_categorical
+import keras.backend as K
+from keras.utils import to_categorical
 from sklearn.metrics import confusion_matrix
 from collections import defaultdict
 from contextlib import redirect_stdout
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.optimizers import SGD
+from keras.optimizers import Adam
+from tools.modified_sgd import Modified_SGD
 from networks.horizontal_nets import *
 from networks.original_nets import *
 from networks.resnets import *
-from data_processing.dataset_utils import tuple_to_dict
+
 
 logger = logging.getLogger("siam_logger")
 
@@ -51,22 +51,13 @@ class SiameseEngine():
         self.right_classif_factor = args.right_classif_factor
         self.siamese_factor = args.siamese_factor
         self.write_to_tensorboard = args.write_to_tensorboard
-        self.summary_writer = tf.summary.create_file_writer(self.results_path)
+        self.summary_writer = tf.summary.FileWriter(self.results_path)
 
-    def setup_input(self, class_indices, num_samples, filenames, type):
+    def setup_input(self, sess, class_indices, num_samples, filenames, type):
         new_labels = list(range(len(class_indices)))
         if type == "train":
             dataset_chunk = self.batch_size
             shuffle = True
-
-            initializer = tf.lookup.KeyValueTensorInitializer(
-                tf.convert_to_tensor(class_indices, dtype=tf.int32),
-                tf.convert_to_tensor(new_labels, dtype=tf.int32))
-
-            self.table = tf.lookup.StaticHashTable(initializer, -1, name=type + "_table")
-
-            self.table._initialize()
-
         else:
             shuffle = False
             if num_samples <= self.val_trials:
@@ -74,19 +65,34 @@ class SiameseEngine():
             else:
                 dataset_chunk = min(num_samples, max(2 * len(class_indices), self.val_trials))
 
+        initializer = tf.contrib.lookup.KeyValueTensorInitializer(
+            tf.convert_to_tensor(class_indices,
+                                 dtype=tf.int32),
+            tf.convert_to_tensor(new_labels,
+                                 dtype=tf.int32))
+        table = tf.contrib.lookup.HashTable(initializer, -1, shared_name=type + "_table")
 
+        (iterator, image_batch, label_batch, _) = dat.deploy_dataset(filenames,
+                                                    table,
+                                                    dataset_chunk,
+                                                    self.image_dims,
+                                                    shuffle)
+        table.init.run(session=sess)
 
-        dataset = dat.deploy_dataset(filenames,
-                                     self.table,
-                                     dataset_chunk,
-                                     self.image_dims,
-                                     shuffle)
+        if type == "train":
+            return iterator, image_batch, label_batch, dataset_chunk
+        else:
+            sess.run(iterator.initializer)
+            ims, labs = sess.run([image_batch, label_batch])
+            inputs, targets_one_hot = self._make_oneshot_task(self.val_trials, ims, labs,
+                                                                  self.num_val_ways)
+            targets = np.argmax(targets_one_hot, axis=1)
+            return  inputs, targets, targets_one_hot
 
-        return dataset
 
     def setup_network(self, num_classes):
         if self.optimizer == 'sgd':
-            optimizer = SGD(
+            optimizer = Modified_SGD(
                 lr=self.learning_rate,
                 momentum=0.5)
         elif self.optimizer == 'adam':
@@ -108,23 +114,83 @@ class SiameseEngine():
         if self.checkpoint:
             self.net.load_weights(self.checkpoint)
 
+
     def train(self, train_class_names, val_class_names, test_class_names, train_filenames,
               val_filenames, test_filenames, train_class_indices, val_class_indices,
               test_class_indices, num_val_samples, num_test_samples):
 
+
         num_train_cls = len(train_class_indices)
         self.setup_network(num_train_cls)
+        sess = tf.Session()
+        sess.run(tf.global_variables_initializer())
 
-        # each sample is x, y
-        # 
+        train_iterator, train_image_batch,\
+        train_label_batch, train_dataset_chunk = self.setup_input(sess, train_class_indices, None, train_filenames,
+                                                                  'train')
 
-        train_dataset = self.setup_input(train_class_indices, None, train_filenames, 'train')
+        val_inputs, val_targets, val_targets_one_hot= self.setup_input(sess, val_class_indices, num_val_samples,
+                                                                       val_filenames, 'val')
 
-        val_dataset = self.setup_input(val_class_indices, num_val_samples, val_filenames, 'val')
-        #
-        # test_dataset = self.setup_input(test_class_indices, num_test_samples, test_filenames, 'test')
+        test_inputs, test_targets, test_targets_one_hot= self.setup_input(sess, test_class_indices, num_test_samples,
+                                                                          test_filenames, 'test')
 
-        self.net.fit(x=train_dataset, validation_data=val_dataset, epochs=self.num_epochs, verbose=1, shuffle=True)
+        with util.Uninterrupt(sigs=[SIGINT, SIGTERM], verbose=True) as u:
+            for epoch in range(self.num_epochs):
+                sess.run(train_iterator.initializer)
+                batch_index = 0
+                train_metrics = defaultdict(list)
+                logger.info("Training epoch {} ...".format(epoch))
+                while True:
+                    try:
+                        train_ims, train_labs = sess.run([train_image_batch, train_label_batch])
+                        # deals with unequal tf record lengths, when the batch might have samples
+                        # from only one class
+                        if len(np.unique(train_labs)) < 2 or \
+                                len(np.unique(train_labs)) > train_dataset_chunk // 2:
+                            continue
+
+                        left_images, right_images, left_labels, siamese_targets, right_labels \
+                            = self._get_train_balanced_batch(train_ims, train_labs, num_train_cls)
+
+                        metrics = self.net.train_on_batch(x={"Left_input": left_images,
+                                                             "Right_input": right_images},
+                                                          y={"Left_branch_classification":
+                                                                 left_labels,
+                                                             "Siamese_classification":
+                                                                 siamese_targets,
+                                                             "Right_branch_classification":
+                                                                 right_labels})
+
+                        for idx, metric in enumerate(metrics):
+                            train_metrics[self.net.metrics_names[idx]].append(metric)
+
+                        batch_index += 1
+
+                    except tf.errors.OutOfRangeError:
+                        if self.lr_annealing:
+                            K.set_value(self.net.optimizer.lr, K.get_value(
+                                self.net.optimizer.lr) * 0.99)
+
+                        if self.momentum_annealing and self.optimizer == 'sgd':
+                            if K.get_value(self.net.optimizer.momentum) < self.final_momentum:
+                                K.set_value(self.net.optimizer.momentum, K.get_value(
+                                    self.net.optimizer.momentum) + self.momentum_slope)
+
+                        if epoch % self.evaluate_every == 0:
+                            self.validate(epoch, batch_index, train_metrics, left_images,
+                                          right_images, siamese_targets, val_inputs, val_targets,
+                                          val_targets_one_hot, val_class_names, test_inputs,
+                                          test_targets, test_targets_one_hot, test_class_names)
+
+                        break
+                if u.interrupted:
+                    logger.info("Interrupted on request, doing one last evaluation")
+                    self.validate(epoch, batch_index, train_metrics, left_images, right_images,
+                                  siamese_targets, val_inputs, val_targets, val_targets_one_hot,
+                                  val_class_names, test_inputs, test_targets, test_targets_one_hot,
+                                  test_class_names)
+                    break
 
     def validate(self, epoch, batch_index, train_metrics, left_images, right_images,
                  siamese_targets, val_inputs, val_targets, val_targets_one_hot, val_class_names,
@@ -237,8 +303,8 @@ class SiameseEngine():
         sess = tf.Session()
         sess.run(tf.global_variables_initializer())
 
-        test_inputs, test_targets, test_targets_one_hot = self.setup_input(sess, test_class_indices, num_test_samples,
-                                                                           test_filenames, 'test')
+        test_inputs, test_targets, test_targets_one_hot= self.setup_input(sess, test_class_indices, num_test_samples,
+                                                                          test_filenames, 'test')
 
         test_accuracy, test_y_pred, test_predictions, \
         test_probs_std, test_probs_means, delay, std_delay = self.eval(test_inputs, test_targets, test_class_names)
@@ -273,8 +339,9 @@ class SiameseEngine():
         std_delay = np.std(timings[1:])
 
         logger.info("{} way one-shot accuracy: {}% on classes {}"
-                    "".format(self.num_val_ways, accuracy * 100, class_names))
+                    "".format(self.num_val_ways, accuracy*100, class_names))
         return accuracy, y_pred, preds, probs_std, probs_means, mean_delay, std_delay
+
 
     def _get_train_balanced_batch(self, images, labels, num_train_cls):
         with tf.device('/cpu:0'):
@@ -379,6 +446,7 @@ class SiameseEngine():
         self.summary_writer.add_summary(means_hist_summary, batch_index)
         self.summary_writer.add_summary(std_hist_summary, batch_index)
         self.summary_writer.flush()
+
 
     def _log_tensorboard_hist(self, values, tag, bins=1000):
         """Logs the histogram of a list/vector of values."""
