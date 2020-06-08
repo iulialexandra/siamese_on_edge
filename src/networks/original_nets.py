@@ -1,10 +1,10 @@
-from keras.models import Model, Sequential
-from keras.layers import Conv2D, MaxPool2D, MaxPooling2D, Flatten, BatchNormalization, Dense, Input, Dropout, \
-    concatenate, Lambda, Subtract
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import Conv2D, MaxPool2D, MaxPooling2D, Flatten, BatchNormalization, Dense, Input, Dropout, \
+    concatenate, Lambda
 import tensorflow as tf
-from keras.optimizers import Adam, SGD
-from keras.regularizers import l2
-from tools.modified_sgd import Modified_SGD
+from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import SGD
 
 
 class OriginalNetworkV2:
@@ -93,12 +93,12 @@ class OriginalNetworkV2Divided:
         self.right_classif_factor = right_classif_factor
         self.siamese_factor = siamese_factor
 
-    def get_embedding(self, inputs, branch):
+    def get_embedding(self, inputs):
         convnet = Conv2D(filters=64, kernel_size=(7, 7),
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv1' + branch)(inputs)
+                         name='Conv1')(inputs)
         convnet = MaxPooling2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -106,7 +106,7 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv2' + branch)(convnet)
+                         name='Conv2')(convnet)
         convnet = MaxPooling2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -114,7 +114,7 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv3' + branch)(convnet)
+                         name='Conv3')(convnet)
         convnet = MaxPool2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
 
@@ -122,27 +122,42 @@ class OriginalNetworkV2Divided:
                          activation='relu',
                          padding="same",
                          kernel_regularizer=l2(1e-3),
-                         name='Conv4' + branch)(convnet)
+                         name='Conv4')(convnet)
         convnet = MaxPool2D(padding="same")(convnet)
         convnet = Dropout(0.5)(convnet)
         convnet = Flatten()(convnet)
         convnet = Dense(4096, activation="relu", kernel_regularizer=l2(1e-3),
-                        kernel_initializer="he_normal", name="Dense1" + branch)(convnet)
-        return convnet
+                        kernel_initializer="he_normal")(convnet)
+        model = Model(inputs, convnet)
+        return convnet, model
 
     def build_siamese(self, num_outputs, model_l, model_r):
-
-        subtraction_layer = Subtract()([model_l, model_r])
+        DistanceLayer = Lambda(lambda tensors: tf.square(tensors[0] - tensors[1]))
+        # call this layer on list of two input tensors.
+        dist = DistanceLayer([model_l.output, model_r.output])
         siamese_prediction = Dense(1, activation='sigmoid',
-                                   name="Siamese_classification")(subtraction_layer)
+                                   name="Siamese_classification")(dist)
 
         right_branch_classif = Dense(num_outputs, activation='softmax',
-                                     name="Right_branch_classification")(model_r)
+                                     name="Right_branch_classification")(model_r.output)
 
         left_branch_classif = Dense(num_outputs, activation='softmax',
-                                    name="Left_branch_classification")(model_l)
+                                    name="Left_branch_classification")(model_l.output)
 
-        return siamese_prediction, left_branch_classif, right_branch_classif
+        siamese_net = Model(inputs=[model_l.input, model_r.input],
+                            outputs=[left_branch_classif, siamese_prediction, right_branch_classif])
+
+        siamese_net.compile(loss={"Left_branch_classification": "categorical_crossentropy",
+                                  "Siamese_classification": "binary_crossentropy",
+                                  "Right_branch_classification": "categorical_crossentropy"},
+                            optimizer=self.optimizer,
+                            metrics={"Left_branch_classification": "accuracy",
+                                     "Siamese_classification": "accuracy",
+                                     "Right_branch_classification": "accuracy"},
+                            loss_weights={"Left_branch_classification": self.left_classif_factor,
+                                          "Siamese_classification": self.siamese_factor,
+                                          "Right_branch_classification": self.right_classif_factor})
+        return siamese_net
 
 
 class OriginalNetworkV3:
