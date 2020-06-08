@@ -14,6 +14,7 @@ def main_cluster(args):
 
 
 def main(args):
+
     plotting = False
     args.plot_confusion = plotting
     args.plot_training_images = plotting
@@ -24,11 +25,11 @@ def main(args):
     args.write_to_tensorboard = False
     args.save_weights = True
     args.console_print = True
-    args.num_epochs = 100
+    args.num_epochs = 10000
     args.n_val_ways = 5
     args.evaluate_every = 10
     args.n_val_tasks = 1000
-    args.batch_size = 32
+    args.batch_size = 128
 
     args.final_momentum = 0.9
     args.momentum_slope = 0.01
@@ -42,7 +43,7 @@ def main(args):
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/mnt/data/siamese_cluster_new/data"
+    args.data_path = r"D:\DL\datasets"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -148,7 +149,7 @@ def parse_args():
                            default="roshambo")
     argparser.add_argument('--data_path',
                            help="Path to data", type=str,
-                           default="/mnt/data/siamese_cluster_new/data")
+                           default=r"D:\DL\datasets\tiny-imagenet-200\tf records iulia")
     return argparser.parse_args()
 
 
@@ -168,7 +169,8 @@ if __name__ == "__main__":
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
     else:
-        print(" Dataset not supported.")
+        print("Dataset not supported.")
+
 
     args.dataset_path = os.path.join(args.data_path, args.dataset)
     main(args)

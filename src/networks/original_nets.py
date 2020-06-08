@@ -1,10 +1,10 @@
-from keras.models import Model, Sequential
-from keras.layers import Conv2D, MaxPool2D, MaxPooling2D, Flatten, BatchNormalization, Dense, Input, Dropout, \
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import Conv2D, MaxPool2D, MaxPooling2D, Flatten, BatchNormalization, Dense, Input, Dropout, \
     concatenate, Lambda
 import tensorflow as tf
-from keras.optimizers import Adam, SGD
-from keras.regularizers import l2
-from tools.modified_sgd import Modified_SGD
+from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import SGD
 
 
 class OriginalNetworkV2:

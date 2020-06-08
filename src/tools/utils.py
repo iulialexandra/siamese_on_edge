@@ -12,7 +12,7 @@ from networks.original_nets import *
 from networks.horizontal_nets import *
 from networks.resnets import *
 import random as rn
-
+import tensorflow as tf
 import time
 import logging
 
@@ -138,7 +138,7 @@ def initialize_experiment(args, train=True):
     # make the experiment deterministic
     np.random.seed(args.seed)
     rn.seed(args.seed)
-    tf.set_random_seed(args.seed)
+    tf.random.set_seed(args.seed)
     os.environ["PYTHONSEED"] = str(args.seed)
     return args, logger
 

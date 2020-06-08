@@ -1,10 +1,10 @@
 import tensorflow as tf
-from keras.layers import Input, Conv2D, Lambda, Dense, Flatten, MaxPooling2D
-from keras.layers import BatchNormalization, Dropout, concatenate, Activation
-from keras.models import Model, Sequential
-from keras.regularizers import l2
-from keras.optimizers import SGD, Adam, RMSprop, Nadam
-from tools.modified_sgd import Modified_SGD
+from tensorflow.keras.layers import Input, Conv2D, Lambda, Dense, Flatten, MaxPooling2D
+from tensorflow.keras.layers import BatchNormalization, Dropout, concatenate, Activation
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Nadam
+from tensorflow.keras.optimizers import SGD
 from networks.wide_resnet_builder import create_wide_residual_network
 
 

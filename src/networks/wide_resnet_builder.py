@@ -1,11 +1,11 @@
 import tensorflow as tf
-from keras.models import Model
-from keras.layers import Input, Add, Activation, Dropout, Flatten, Dense, concatenate, Lambda
-from keras.layers.convolutional import Conv2D, MaxPooling2D, AveragePooling2D
-from keras.layers.normalization import BatchNormalization
-from keras.regularizers import l2
-from keras.optimizers import SGD, Adam, RMSprop, Nadam
-from keras import backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Add, Activation, Dropout, Flatten, Dense, concatenate, Lambda
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Nadam
+from tensorflow.keras import backend as K
 
 weight_decay = 1e-3
 
