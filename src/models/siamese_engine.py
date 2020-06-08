@@ -20,6 +20,7 @@ from networks.original_nets import *
 from networks.resnets import *
 from data_processing.dataset_utils import tuple_to_dict
 
+
 logger = logging.getLogger("siam_logger")
 
 
@@ -100,6 +101,8 @@ class SiameseEngine():
                                 self.right_classif_factor,
                                 self.siamese_factor)
         self.net = siamese_network.build_net(num_classes)
+
+
 
         with open(os.path.join(self.results_path, 'modelsummary.txt'), 'w') as f:
             with redirect_stdout(f):

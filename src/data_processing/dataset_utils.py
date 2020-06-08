@@ -268,7 +268,7 @@ def deploy_dataset(filenames, new_labels_dict, batch_size, image_dims, shuffle=T
     batched_dataset = mixed_zipped.batch(batch_size)
 
     # Map batch data to Keras dictionary input
-    dataset_mapped = batched_dataset.map(map_func=tuple_to_dict, num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(10)
+    dataset_mapped = batched_dataset.map(map_func=tuple_to_dict, num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(1000)
 
     return dataset_mapped
 

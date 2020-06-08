@@ -43,7 +43,7 @@ def main(args):
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/mnt/data/siamese_cluster_new/data"
+    args.data_path = r"D:\DL\datasets"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
