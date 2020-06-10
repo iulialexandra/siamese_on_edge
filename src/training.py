@@ -1,8 +1,8 @@
 import argparse
 import tools.utils as util
-from models.siamese_engine import SiameseEngine
 import os
 import data_processing.dataset_utils as dat
+from models.siamese_engine import SiameseEngine
 
 
 def main_cluster(args):
@@ -41,9 +41,10 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
+    args.quantization = False
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = r"D:\DL\datasets"
+    args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -104,6 +105,8 @@ def parse_args():
                            type=float, default=0.7)
     argparser.add_argument('--siamese_factor', help="How much the siamese similarity should count",
                            type=float, default=1.)
+    argparser.add_argument('--quantization', help="Whether to perform quantization",
+                           type=bool, default=True)
     argparser.add_argument('--lr_annealing',
                            help="If set to true, it changes the learning rate at each epoch",
                            type=bool, default=True)
@@ -149,7 +152,7 @@ def parse_args():
                            default="roshambo")
     argparser.add_argument('--data_path',
                            help="Path to data", type=str,
-                           default=r"D:\DL\datasets\tiny-imagenet-200\tf records iulia")
+                           default="/mnt/data/siamese_cluster_new/data")
     return argparser.parse_args()
 
 
@@ -171,6 +174,6 @@ if __name__ == "__main__":
     else:
         print("Dataset not supported.")
 
-
     args.dataset_path = os.path.join(args.data_path, args.dataset)
+
     main(args)

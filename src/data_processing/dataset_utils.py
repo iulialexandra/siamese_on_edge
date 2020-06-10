@@ -135,25 +135,6 @@ def parser(record, new_labels_dict, image_dims, resize_dims):
         record: image + label
     """
 
-    def tf_repeat(tensor, repeats):
-        """
-        Args:
-
-        input: A Tensor. 1-D or higher.
-        repeats: A list. Number of repeat for each dimension, length must be the same as the number
-                         of dimensions in input
-
-        Returns:
-
-        A Tensor. Has the same type as input. Has the shape of tensor.shape * repeats
-        """
-        with tf.variable_scope("repeat"):
-            expanded_tensor = tf.expand_dims(tensor, -1)
-            multiples = [1] + repeats
-            tiled_tensor = tf.tile(expanded_tensor, multiples=multiples)
-            repeated_tensor = tf.reshape(tiled_tensor, tf.shape(tensor) * repeats)
-        return repeated_tensor
-
     # with tf.device('/cpu:0'):
     features = tf.io.parse_single_example(record,
                                           features={
@@ -177,7 +158,7 @@ def parser(record, new_labels_dict, image_dims, resize_dims):
     if resize_dims is not None:
         image = tf.image.resize(image, resize_dims, align_corners=False, preserve_aspect_ratio=False)
 
-    return tf.tuple(tensors=(image, new_label, labels_one_hot))
+    return image, new_label, labels_one_hot
 
 
 def array_to_dataset(data_array, labels_array, batch_size):
@@ -222,42 +203,41 @@ def flat_to_proto(*argv, num_classes):
     return return_tensors
 
 
-def deploy_dataset(filenames, new_labels_dict, batch_size, image_dims, shuffle=True):
-    def get_dataset_from_filename(dataset_file):
+def get_dataset_from_filename(dataset_files, new_labels_dict, image_dims, shuffle):
 
-        if isinstance(dataset_file, list) is False:
-            dataset_file = [dataset_file]
+    if isinstance(dataset_files, list) is False:
+        dataset_files = [dataset_files]
 
-        interleaved_dataset = tf.data.Dataset.from_tensor_slices(dataset_file).interleave(tf.data.TFRecordDataset,
-                                                                                          num_parallel_calls=tf.data.experimental.AUTOTUNE,
-                                                                                          block_length=100000)
+    interleaved_dataset = tf.data.Dataset.from_tensor_slices(dataset_files).interleave(tf.data.TFRecordDataset,
+                                                                                      num_parallel_calls=tf.data.experimental.AUTOTUNE,
+                                                                                      block_length=100000)
 
-        cached_dataset = interleaved_dataset.map(map_func=lambda x: parser(x, new_labels_dict, image_dims, None),
-                                                 num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-        ###
-        # Everything prior to this point is executed only in the first epoch due to .cache()
-        ###
+    cached_dataset = interleaved_dataset.map(map_func=lambda x: parser(x, new_labels_dict, image_dims, None),
+                                             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
 
-        mapped_dataset = cached_dataset.shuffle(buffer_size=2 ** 24)
+    # Everything prior to this point is executed only in the first epoch due to .cache()
+    if shuffle:
+        return cached_dataset.shuffle(buffer_size=2 ** 24)
+    else:
+        return cached_dataset
 
-        return mapped_dataset
 
+def deploy_dataset_train(filenames, new_labels_dict, batch_size, image_dims, shuffle):
     # Read all datasets and create couples. Couples vary at each epoch
     # These inputs have a 1-(1/num_class) probability of having a 0 siamese prediction (aka class different).
     # For example, for a 200 classes dataset, 99.5% of the couples will be different
-    mixed_left = get_dataset_from_filename(filenames)
-    mixed_right = get_dataset_from_filename(filenames)
+    mixed_left = get_dataset_from_filename(filenames, new_labels_dict, image_dims, True)
+    mixed_right = get_dataset_from_filename(filenames, new_labels_dict, image_dims, True)
     mixed_zipped = tf.data.Dataset.zip((mixed_left, mixed_right))
 
     # Read all datasets individually and create couples. Couples vary at each epoch
     # Here we ensure the siamese prediction is going to be 1 in 100% of the cases
     for filename in filenames:
-        same_right = get_dataset_from_filename(filename)
-        same_left = get_dataset_from_filename(filename)
+        same_right = get_dataset_from_filename(filename, new_labels_dict, image_dims, True)
+        same_left = get_dataset_from_filename(filename, new_labels_dict, image_dims, True)
 
         class_dataset = tf.data.Dataset.zip((same_left, same_right))
         mixed_zipped = mixed_zipped.concatenate(class_dataset)  # to create final dataset
-
     # Here the dataset is about 50% composed of different couples and 50% of equal couples
 
     # we shuffle the couples so each batch is balanced
@@ -268,7 +248,8 @@ def deploy_dataset(filenames, new_labels_dict, batch_size, image_dims, shuffle=T
     batched_dataset = mixed_zipped.batch(batch_size)
 
     # Map batch data to Keras dictionary input
-    dataset_mapped = batched_dataset.map(map_func=tuple_to_dict, num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(1000)
+    dataset_mapped = batched_dataset.map(map_func=tuple_to_dict,
+                                         num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(1000)
 
     return dataset_mapped
 
