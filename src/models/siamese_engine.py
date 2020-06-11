@@ -86,6 +86,7 @@ class SiameseEngine():
         list_dataset = np.array(list(dataset.as_numpy_iterator()))
         images = np.array([it for it in list_dataset[:, 0]])
         labels = np.array([it for it in list_dataset[:, 1]])
+
         image_pairs, targets, targets_one_hot = self._make_oneshot_task(self.val_trials, images, labels,
                                                                         self.num_val_ways)
         return image_pairs, targets, targets_one_hot
@@ -162,10 +163,9 @@ class SiameseEngine():
         for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
 
-            self.net.fit(x=train_dataset, validation_data=None, epochs=self.evaluate_every, initial_epoch=epoch,
-                         verbose=2, callbacks=callbacks)
-            self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs,
-                          test_targets, test_targets_one_hot, test_class_names)
+            self.net.fit(x=train_dataset, validation_data=None, epochs=epoch + self.evaluate_every, \
+                                                                             initial_epoch=epoch, verbose=2, callbacks=callbacks)
+            self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs, test_targets, test_targets_one_hot, test_class_names)
 
     def validate(self, epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names,
                  test_inputs, test_targets, test_targets_one_hot, test_class_names):
@@ -191,28 +191,13 @@ class SiameseEngine():
             # self.net.save_weights(os.path.join(self.results_path, "weights.h5"))
             self.net.save(os.path.join(self.results_path, "weights.h5"), overwrite=True, include_optimizer=False)
 
-    def test(self, train_class_names, val_class_names, test_class_names, train_filenames,
-              val_filenames, test_filenames, train_class_indices, val_class_indices,
-              test_class_indices, num_val_samples, num_test_samples):
+    def test(self, train_class_indices, class_names, filenames, class_indices, num_samples, type):
         num_train_cls = len(train_class_indices)
         self.setup_network(num_train_cls)
-        val_inputs, val_targets, val_targets_one_hot = self.setup_input_test(val_class_indices, num_val_samples,
-                                                                             val_filenames, 'val')
-        test_inputs, test_targets, test_targets_one_hot = self.setup_input_test(test_class_indices, num_test_samples,
-                                                                                test_filenames, 'test')
+        inputs, targets, targets_one_hot = self.setup_input_test(class_indices, num_samples, filenames, type)
 
-        val_accuracy, val_y_pred, val_predictions, val_probs_std, val_probs_means, mean_delay, std_delay = self.eval(
-            val_inputs,
-            val_targets,
-            val_class_names)
-        test_accuracy, test_y_pred, test_predictions, test_probs_std, test_probs_means, mean_delay, std_delay = self.eval(
-            test_inputs,
-            test_targets,
-            test_class_names)
-
-        util.metrics_to_csv(os.path.join(self.results_path, "metrics_inference.csv"), np.asarray([val_accuracy,
-                                                                                                  test_accuracy]),
-                            ["siamese_val_accuracy", "siamese_test_accuracy"])
+        test_accuracy, test_y_pred, test_predictions, \
+        test_probs_std, test_probs_means, delay, std_delay = self.eval(inputs, targets, class_names)
 
     def eval(self, inps, targets, class_names):
         logger.info(
@@ -265,3 +250,85 @@ class SiameseEngine():
                        np.array(comparison_images, dtype=np.float32)]
         targets = np.argmax(targets_one_hot, axis=1)
         return image_pairs, targets, targets_one_hot
+
+    def _write_logs_to_tensorboard(self, batch_index, left_loss, left_acc, right_loss, right_acc,
+                                   siamese_loss, siamese_acc, val_accuracy, test_accuracy,
+                                   test_probs_std, test_probs_means):
+        """ Writes the logs to a tensorflow log file
+        """
+
+        summary = tf.Summary()
+
+        value = summary.value.add()
+        value.simple_value = left_loss
+        value.tag = 'Left images classification training loss'
+
+        value = summary.value.add()
+        value.simple_value = left_acc
+        value.tag = 'Left images classification training accuracy'
+
+        value = summary.value.add()
+        value.simple_value = right_loss
+        value.tag = 'Right images classification training loss'
+
+        value = summary.value.add()
+        value.simple_value = right_acc
+        value.tag = 'Right images classification training accuracy'
+
+        value = summary.value.add()
+        value.simple_value = siamese_loss
+        value.tag = 'Siamese training loss'
+
+        value = summary.value.add()
+        value.simple_value = siamese_acc
+        value.tag = 'Siamese training accuracy'
+
+        value = summary.value.add()
+        value.simple_value = val_accuracy
+        value.tag = 'Siamese validation accuracy'
+
+        value = summary.value.add()
+        value.simple_value = test_accuracy
+        value.tag = 'Siamese testing accuracy on unseen classes'
+
+        means_hist_summary = self._log_tensorboard_hist(test_probs_means,
+                                                        'Siamese prediction probabilities means')
+        std_hist_summary = self._log_tensorboard_hist(test_probs_std,
+                                                      'Siamese prediction probabilities'
+                                                      ' standard deviation')
+
+        self.summary_writer.add_summary(summary, batch_index)
+        self.summary_writer.add_summary(means_hist_summary, batch_index)
+        self.summary_writer.add_summary(std_hist_summary, batch_index)
+        self.summary_writer.flush()
+
+    def _log_tensorboard_hist(self, values, tag, bins=1000):
+        """Logs the histogram of a list/vector of values."""
+        # Convert to a numpy array
+        values = np.array(values)
+
+        # Create histogram using numpy
+        counts, bin_edges = np.histogram(values, bins=bins)
+
+        # Fill fields of histogram proto
+        hist = tf.HistogramProto()
+        hist.min = float(np.min(values))
+        hist.max = float(np.max(values))
+        hist.num = int(np.prod(values.shape))
+        hist.sum = float(np.sum(values))
+        hist.sum_squares = float(np.sum(values ** 2))
+
+        # Requires equal number as bins, where the first goes from -DBL_MAX to bin_edges[1]
+        # See https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/summary.proto#L30
+        # Thus, we drop the start of the first bin
+        bin_edges = bin_edges[1:]
+
+        # Add bin edges and counts
+        for edge in bin_edges:
+            hist.bucket_limit.append(edge)
+        for c in counts:
+            hist.bucket.append(c)
+
+        # Create and write Summary
+        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, histo=hist)])
+        return summary
