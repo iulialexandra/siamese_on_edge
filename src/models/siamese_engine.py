@@ -101,12 +101,12 @@ class SiameseEngine():
         """
         lr = self.learning_rate
         if epoch > 100:
-            lr *= 1e-3
+            lr *= 0.5e-2
         elif epoch > 50:
             lr *= 1e-2
-        elif epoch > 10:
+        elif epoch > 20:
             lr *= 0.5e-1
-        elif epoch > 5:
+        elif epoch > 10:
             lr *= 1e-1
         print('Learning rate: ', lr)
         return lr
@@ -150,7 +150,7 @@ class SiameseEngine():
         lr_scheduler = LearningRateScheduler(self.lr_schedule)
 
         lr_reducer = ReduceLROnPlateau(
-            monitor="Siamese_classification_loss",
+            monitor="loss",
             factor=np.sqrt(0.1),
             cooldown=0,
             patience=5,
