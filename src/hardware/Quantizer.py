@@ -16,15 +16,20 @@ import tensorflow_model_optimization as tfmot
 from tensorflow import keras
 
 
-def get_quant_exp(variable, num_bits, return_abs=False):
-    abs_variable = tf.abs(variable)
+def get_quant_exp(variable, num_bits, use_abs, return_abs):
+    if use_abs:
+        abs_variable = tf.abs(variable)
+    else:
+        abs_variable = variable
+
     max_variable = tf.reduce_max(abs_variable)
 
     # we need a conditional statement because of the array is entirely 0 we would get a -inf log
     log_variable = tf.cond(
         tf.equal(max_variable, 0.0),
         lambda: tf.constant(0.0, variable.dtype),
-        lambda: tf.math.log(max_variable) / tf.constant(math.log(2.0), variable.dtype)  # tf doesnt have log2, so we compute log in base e and then divide to cast it to log2
+        lambda: tf.math.log(max_variable) / tf.constant(math.log(2.0), variable.dtype)
+        # tf doesnt have log2, so we compute log in base e and then divide to cast it to log2
     )
 
     log_rounded = tf.cast(tf.math.ceil(log_variable), tf.int8)
@@ -37,13 +42,19 @@ def get_quant_exp(variable, num_bits, return_abs=False):
         return no_grad_exp, abs_variable
 
 
-def quantize_variable(variable, exp, width, clip, round_or_floor, name):
+def quantize_variable(variable, exp, width, clip, clip_negative=False, round_or_floor="round", name=""):
     # Use tf.custom_gradient to add a gradient to round and floor operations
     # We need a sub function because @tf.custom_gradient doesnt support kwargs
     @tf.custom_gradient
     def _quantize_variable(l_var):
         def grad(dy):  # identity gradient
-            return dy
+            if clip_negative is False:
+                return dy
+            else:
+                raise ("Negative clipping not implemented")
+                var_mask = tf.cast(tf.greater_equal(variable, 0.0), variable.dtype)
+                dy = tf.multiply(variable, var_mask)
+                return dy
 
         # Round doesnt have a gradient, we force it to identity
         quant_shift = 2.0 ** tf.cast(exp, tf.float32)  # cast for ** compatiblity
@@ -56,9 +67,14 @@ def quantize_variable(variable, exp, width, clip, round_or_floor, name):
         else:
             raise ValueError("Illegal round mode {}".format(round_or_floor))
 
-        if clip is True:
+        if clip is True or clip_negative is True:
             max_value = 2.0 ** (width - 1)
-            quantizing = tf.clip_by_value(quantizing, -max_value, max_value - 1, name=name + "_clip")
+            if clip_negative is True:
+                min_value = 0
+            else:
+                min_value = -max_value
+
+            quantizing = tf.clip_by_value(quantizing,min_value, max_value - 1, name=name + "_clip")
 
         quantizing = quantizing / quant_shift
         return quantizing, grad
@@ -84,7 +100,8 @@ class BFPQuantizer(Quantizer):
         variable_dict["exp"] = layer.add_weight(
             name=name + "_exp",
             dtype=tf.int8,
-            initializer=keras.initializers.Constant(value=self.num_bits),  # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
+            initializer=keras.initializers.Constant(value=self.num_bits),
+            # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
             trainable=False
         )
 
@@ -124,7 +141,8 @@ class BFPWeightQuantizer(BFPQuantizer):
         variable_dict["stored_tensor"] = layer.add_weight(
             name=name + "_stored_tensor",
             shape=tensor_shape,
-            initializer=keras.initializers.glorot_normal(),  # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
+            initializer=keras.initializers.glorot_normal(),
+            # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
             trainable=False
         )
         if self.enable_pruning is True:
@@ -172,12 +190,14 @@ class BFPWeightQuantizer(BFPQuantizer):
             assign_ops = []
             if self.enable_pruning is True:
                 # Get quantization exp and absoluted array
-                quant_exp, abs_weights = get_quant_exp(inputs, self.num_bits, return_abs=True)
+                quant_exp, abs_weights = get_quant_exp(inputs, self.num_bits, use_abs=True, return_abs=True)
 
                 def update_mask(sparsity):
                     # Compute position of threshold in the array. Must be capped to avoid error when sparsity is 0
-                    pruning_threshold_index_uncapped = tf.dtypes.cast(tf.math.round(self.num_weights_fp * (1 - sparsity)), tf.int32)
-                    pruning_threshold_index = tf.math.minimum(pruning_threshold_index_uncapped, self.num_weights_int - 1)
+                    pruning_threshold_index_uncapped = tf.dtypes.cast(
+                        tf.math.round(self.num_weights_fp * (1 - sparsity)), tf.int32)
+                    pruning_threshold_index = tf.math.minimum(pruning_threshold_index_uncapped,
+                                                              self.num_weights_int - 1)
 
                     # Sort the entire array (flattened)
                     sorted_weights, _ = tf.math.top_k(tf.reshape(abs_weights, [-1]), k=self.num_weights_int)
@@ -200,14 +220,16 @@ class BFPWeightQuantizer(BFPQuantizer):
                 no_grad_mask = tf.stop_gradient(sel_mask)
                 masked_weight = tf.math.multiply(inputs, no_grad_mask)
                 incremented_pruning_step = weights["pruning_step"] + 1
-                assign_ops.append(weights["pruning_step"].assign(incremented_pruning_step))  # updated even if not pruning since we need it for keeping track of when to prune
+                assign_ops.append(weights["pruning_step"].assign(
+                    incremented_pruning_step))  # updated even if not pruning since we need it for keeping track of when to prune
             else:
                 # Get quantization exp and absoluted array
-                quant_exp = get_quant_exp(inputs, self.num_bits, return_abs=False)
+                quant_exp = get_quant_exp(inputs, self.num_bits, use_abs=True, return_abs=False)
                 masked_weight = inputs
 
             # Quantization
-            quantized_inputs = quantize_variable(variable=masked_weight, exp=quant_exp, width=self.num_bits, clip=False, round_or_floor="round", name="weight")
+            quantized_inputs = quantize_variable(variable=masked_weight, exp=quant_exp, width=self.num_bits, clip=False,
+                                                 round_or_floor="round", name="weight")
 
             assign_ops.append(weights["stored_tensor"].assign(quantized_inputs))
             assign_ops.append(weights["exp"].assign(quant_exp))
@@ -219,14 +241,16 @@ class BFPWeightQuantizer(BFPQuantizer):
 
 
 class BFPActivQuantizer(BFPQuantizer):
-    def __init__(self, num_bits, num_batch):
+    def __init__(self, num_bits, num_batch, activation_is_relu=False):
         super().__init__(num_bits)
         self.num_batch = num_batch
         self.exp = num_bits
+        self.activation_is_relu = False
 
     def get_config(self):
         config = super().get_config()
         config["num_batch"] = self.num_batch
+        config["activation_is_relu"] = self.activation_is_relu
         return config
 
     def build(self, tensor_shape, name, layer):
@@ -236,23 +260,39 @@ class BFPActivQuantizer(BFPQuantizer):
             name=name + "_exp_memory",
             dtype=tf.int8,
             shape=(self.num_batch,),
-            initializer=keras.initializers.Constant(value=0),  # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
+            initializer=keras.initializers.Constant(value=0),
             trainable=False
         )
         variable_dict["exp_memory_ptr"] = layer.add_weight(
             name=name + "_exp_memory_ptr",
             dtype=tf.int32,
-            initializer=keras.initializers.Constant(value=0),  # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
+            initializer=keras.initializers.Constant(value=0),
             trainable=False
         )
 
         self.exp = variable_dict["exp"]  # for bias quantization
 
+        if layer.submodules[0].activation == keras.activations.relu: # or hasattr(layer.submodules[0], 'merged_relu'):
+            # print("Merging layer ReLu with Activ quantization ({})".format(layer.submodules[0].activation))
+            # layer.submodules[0].activation = None
+            # layer.submodules[0].merged_relu = True
+            self.activation_is_relu = True
+
+
+        variable_dict["merged_relu"] = layer.add_weight(
+            name=name + "_merged_relu",
+            dtype=tf.bool,
+            initializer=keras.initializers.Constant(value=self.activation_is_relu),
+            trainable=False
+        )
+
         return variable_dict
 
     def __call__(self, inputs, training, weights, **kwargs):
+
         if training is True:
-            new_exp = get_quant_exp(inputs, self.num_bits)
+            use_abs = not self.activation_is_relu
+            new_exp = get_quant_exp(inputs, self.num_bits, use_abs=use_abs, return_abs=False)
             new_memory_ptr = tf.math.floormod(weights["exp_memory_ptr"] + 1, self.num_batch)
 
             exp_memory_assign_op = weights["exp_memory"][weights["exp_memory_ptr"]].assign(new_exp)
@@ -261,15 +301,23 @@ class BFPActivQuantizer(BFPQuantizer):
             quant_exp = tf.reduce_max(weights["exp_memory"])
             exp_assign_op = weights["exp"].assign(quant_exp)
 
-            self.exp = quant_exp #used by the bias quantizer
+            self.exp = quant_exp  # used by the bias quantizer
 
             clip = False
-            with tf.control_dependencies([exp_memory_assign_op, exp_memory_ptr_assign_op, exp_memory_ptr_assign_op, exp_assign_op]):
-                quantized_inputs = quantize_variable(variable=inputs, exp=quant_exp, width=self.num_bits, clip=clip, round_or_floor="floor", name="activ")
+            control_ops = [exp_memory_assign_op, exp_memory_ptr_assign_op, exp_memory_ptr_assign_op, exp_assign_op]
         else:
             quant_exp = weights["exp"]
             clip = True
-            quantized_inputs = quantize_variable(variable=inputs, exp=quant_exp, width=self.num_bits, clip=clip, round_or_floor="floor", name="activ")
+            control_ops = []
+
+        with tf.control_dependencies(control_ops):
+            quantized_inputs = quantize_variable(variable=inputs,
+                                                 exp=quant_exp,
+                                                 width=self.num_bits,
+                                                 clip=clip,
+                                                 clip_negative=False,
+                                                 round_or_floor="floor",
+                                                 name="activ")
 
         return quantized_inputs
 
@@ -290,7 +338,7 @@ class BFPBiasQuantizer(BFPQuantizer):
         variable_dict["stored_tensor"] = layer.add_weight(
             name=name + "_stored_tensor",
             shape=tensor_shape,
-            initializer=keras.initializers.zeros(),  # assume that the max value of the variable is 1, so we put it to output_num_bits and minimize loss
+            initializer=keras.initializers.zeros(),
             trainable=False
         )
 
@@ -304,7 +352,8 @@ class BFPBiasQuantizer(BFPQuantizer):
             return weights["stored_tensor"]
         else:
             exp_assign_op = weights["exp"].assign(self.activ_quantizer.exp)
-            quantized_inputs = quantize_variable(variable=inputs, exp=exp_assign_op, width=self.num_bits, clip=True, round_or_floor="round", name="bias")
+            quantized_inputs = quantize_variable(variable=inputs, exp=exp_assign_op, width=self.num_bits, clip=True,
+                                                 round_or_floor="round", name="bias")
             stored_tensor_assign_op = weights["stored_tensor"].assign(quantized_inputs)
 
             with tf.control_dependencies([stored_tensor_assign_op]):
@@ -372,7 +421,8 @@ def apply_quantization(model):
 
         for layer_type, quantize_config in quantization_map.items():
             if isinstance(layer, layer_type):
-                print("**Quantization annotation added to layer {} of type {} with {}".format(layer.name, layer_type, quantize_config))
+                print("**Quantization annotation added to layer {} of type {} with {}".format(layer.name, layer_type,
+                                                                                              quantize_config))
                 return quantize_annotate_layer(to_annotate=layer, quantize_config=quantize_config)
         print("**Quantization annotation not added to layer {} of type {}".format(layer.name, type(layer)))
         return layer

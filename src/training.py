@@ -42,9 +42,9 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.quantization = None
+    args.quantization = "nullhop"
     args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
+    args.model = "HorizontalNetworkV44"
     args.data_path = r"D:\DL\datasets"
 
     if args.dataset == "mnist":

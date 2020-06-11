@@ -87,38 +87,14 @@ class SiameseEngine():
                                                                         self.num_val_ways)
         return image_pairs, targets, targets_one_hot
 
-    def lr_schedule(self, epoch):
-        """Learning Rate Schedule
-
-        Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
-        Called automatically every epoch as part of callbacks during training.
-
-        # Arguments
-            epoch (int): The number of epochs
-
-        # Returns
-            lr (float32): learning rate
-        """
-        lr = self.learning_rate
-        if epoch > 100:
-            lr *= 0.5e-2
-        elif epoch > 50:
-            lr *= 1e-2
-        elif epoch > 20:
-            lr *= 0.5e-1
-        elif epoch > 10:
-            lr *= 1e-1
-        print('Learning rate: ', lr)
-        return lr
-
     def setup_network(self, num_classes):
 
         if self.optimizer == 'sgd':
             optimizer = SGD(
-                lr=self.lr_schedule(0),
+                lr=self.learning_rate,
                 momentum=0.5)
         elif self.optimizer == 'adam':
-            optimizer = Adam(self.lr_schedule(0))
+            optimizer = Adam(self.learning_rate)
         else:
             raise ("optimizer not known")
 
@@ -147,16 +123,14 @@ class SiameseEngine():
         test_inputs, test_targets, test_targets_one_hot = self.setup_input_test(test_class_indices, num_test_samples,
                                                                                 test_filenames, 'test')
 
-        lr_scheduler = LearningRateScheduler(self.lr_schedule)
-
         lr_reducer = ReduceLROnPlateau(
             monitor="loss",
-            factor=np.sqrt(0.1),
-            cooldown=0,
+            factor=0.5,
+            cooldown=1,
             patience=5,
             min_lr=0.5e-6)
 
-        callbacks = [lr_reducer, lr_scheduler]
+        callbacks = [lr_reducer]
 
         for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
