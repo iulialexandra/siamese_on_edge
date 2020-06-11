@@ -20,9 +20,6 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 logger = logging.getLogger("siam_logger")
 
 
-
-
-
 class SiameseEngine():
     def __init__(self, args):
         self.batch_size = args.batch_size
@@ -152,10 +149,12 @@ class SiameseEngine():
 
         lr_scheduler = LearningRateScheduler(self.lr_schedule)
 
-        lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
-                                       cooldown=0,
-                                       patience=5,
-                                       min_lr=0.5e-6)
+        lr_reducer = ReduceLROnPlateau(
+            monitor="Siamese_classification_loss",
+            factor=np.sqrt(0.1),
+            cooldown=0,
+            patience=5,
+            min_lr=0.5e-6)
 
         callbacks = [lr_reducer, lr_scheduler]
 
@@ -192,8 +191,8 @@ class SiameseEngine():
             self.net.save(os.path.join(self.results_path, "weights.h5"), overwrite=True, include_optimizer=False)
 
     def test(self, train_class_names, val_class_names, test_class_names, train_filenames,
-              val_filenames, test_filenames, train_class_indices, val_class_indices,
-              test_class_indices, num_val_samples, num_test_samples):
+             val_filenames, test_filenames, train_class_indices, val_class_indices,
+             test_class_indices, num_val_samples, num_test_samples):
         num_train_cls = len(train_class_indices)
         self.setup_network(num_train_cls)
         val_inputs, val_targets, val_targets_one_hot = self.setup_input_test(val_class_indices, num_val_samples,
@@ -239,7 +238,8 @@ class SiameseEngine():
         mean_delay = np.mean(timings[1:])
         std_delay = np.std(timings[1:])
 
-        logger.info("{} way one-shot accuracy: {}% on classes {}".format(self.num_val_ways, accuracy * 100, class_names))
+        logger.info(
+            "{} way one-shot accuracy: {}% on classes {}".format(self.num_val_ways, accuracy * 100, class_names))
         return accuracy, y_pred, preds, probs_std, probs_means, mean_delay, std_delay
 
     def _make_oneshot_task(self, n_val_tasks, image_data, labels, n_ways):
