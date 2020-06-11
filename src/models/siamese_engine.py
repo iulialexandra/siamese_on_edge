@@ -14,8 +14,13 @@ from tensorflow.keras.optimizers import SGD
 from networks.horizontal_nets import *
 from networks.original_nets import *
 from networks.resnets import *
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 
 logger = logging.getLogger("siam_logger")
+
+
+
 
 
 class SiameseEngine():
@@ -86,13 +91,38 @@ class SiameseEngine():
                                                                         self.num_val_ways)
         return image_pairs, targets, targets_one_hot
 
+    def lr_schedule(self, epoch):
+        """Learning Rate Schedule
+
+        Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
+        Called automatically every epoch as part of callbacks during training.
+
+        # Arguments
+            epoch (int): The number of epochs
+
+        # Returns
+            lr (float32): learning rate
+        """
+        lr = self.learning_rate
+        if epoch > 100:
+            lr *= 1e-3
+        elif epoch > 50:
+            lr *= 1e-2
+        elif epoch > 10:
+            lr *= 0.5e-1
+        elif epoch > 5:
+            lr *= 1e-1
+        print('Learning rate: ', lr)
+        return lr
+
     def setup_network(self, num_classes):
+
         if self.optimizer == 'sgd':
             optimizer = SGD(
-                lr=self.learning_rate,
+                lr=self.lr_schedule(0),
                 momentum=0.5)
         elif self.optimizer == 'adam':
-            optimizer = Adam(self.learning_rate)
+            optimizer = Adam(self.lr_schedule(0))
         else:
             raise ("optimizer not known")
 
@@ -120,12 +150,21 @@ class SiameseEngine():
                                                                              val_filenames, 'val')
         test_inputs, test_targets, test_targets_one_hot = self.setup_input_test(test_class_indices, num_test_samples,
                                                                                 test_filenames, 'test')
-        for epoch in range(self.num_epochs):
+
+        lr_scheduler = LearningRateScheduler(self.lr_schedule)
+
+        lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
+                                       cooldown=0,
+                                       patience=5,
+                                       min_lr=0.5e-6)
+
+        callbacks = [lr_reducer, lr_scheduler]
+
+        for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
-            self.net.fit(x=train_dataset, validation_data=None, epochs=1, verbose=1, shuffle=True)
-            if epoch % self.evaluate_every == 0:
-                self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs,
-                              test_targets, test_targets_one_hot, test_class_names)
+
+            self.net.fit(x=train_dataset, validation_data=None, epochs=self.evaluate_every, initial_epoch=epoch, verbose=2, callbacks=callbacks)
+            self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs, test_targets, test_targets_one_hot, test_class_names)
 
     def validate(self, epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names,
                  test_inputs, test_targets, test_targets_one_hot, test_class_names):
@@ -184,8 +223,7 @@ class SiameseEngine():
         mean_delay = np.mean(timings[1:])
         std_delay = np.std(timings[1:])
 
-        logger.info("{} way one-shot accuracy: {}% on classes {}"
-                    "".format(self.num_val_ways, accuracy * 100, class_names))
+        logger.info("{} way one-shot accuracy: {}% on classes {}".format(self.num_val_ways, accuracy * 100, class_names))
         return accuracy, y_pred, preds, probs_std, probs_means, mean_delay, std_delay
 
     def _make_oneshot_task(self, n_val_tasks, image_data, labels, n_ways):

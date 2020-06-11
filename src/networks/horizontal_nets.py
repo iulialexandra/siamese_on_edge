@@ -81,7 +81,7 @@ class HorizontalNetworkV5():
                                    name="Siamese_classification_dense")(common_branch)
 
         siamese_model = Model(inputs=common_input, outputs=siamese_prediction, name="Siamese_classification")
-        print(siamese_model)
+
         if quantization:
             siamese_model = apply_quantization(siamese_model)(common_concat)
         else:
