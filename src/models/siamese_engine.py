@@ -99,18 +99,26 @@ class SiameseEngine():
             raise ("optimizer not known")
 
         model = util.str_to_class(self.model)
-        siamese_network = model(self.image_dims, optimizer,
-                                self.left_classif_factor,
-                                self.right_classif_factor,
-                                self.siamese_factor)
-        self.net = siamese_network.build_net(num_classes, self.quantization)
+        siamese_network = model(self.image_dims)
+        self.net_train, self.net_test = siamese_network.build_net(num_classes, self.quantization)
+
+        self.net_train.compile(loss={"Left_branch_classification": "categorical_crossentropy",
+                                  "Siamese_classification": "binary_crossentropy",
+                                  "Right_branch_classification": "categorical_crossentropy"},
+                            optimizer=optimizer,
+                            metrics={"Left_branch_classification": "accuracy",
+                                     "Siamese_classification": "accuracy",
+                                     "Right_branch_classification": "accuracy"},
+                            loss_weights={"Left_branch_classification": self.left_classif_factor,
+                                          "Siamese_classification": self.siamese_factor,
+                                          "Right_branch_classification": self.right_classif_factor})
 
         with open(os.path.join(self.results_path, 'modelsummary.txt'), 'w') as f:
             with redirect_stdout(f):
-                self.net.summary()
+                self.net_train.summary()
 
         if self.checkpoint:
-            self.net.load_weights(self.checkpoint)
+            self.net_train.load_weights(self.checkpoint)
 
     def train(self, train_class_names, val_class_names, test_class_names, train_filenames,
               val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -135,10 +143,11 @@ class SiameseEngine():
         for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
 
-            self.net.fit(x=train_dataset, validation_data=None, epochs=epoch + self.evaluate_every, initial_epoch=epoch,
-                         verbose=2, callbacks=callbacks)
             self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs,
                           test_targets, test_targets_one_hot, test_class_names)
+            self.net_train.fit(x=train_dataset, validation_data=None, epochs=epoch + self.evaluate_every, initial_epoch=epoch,
+                         verbose=2, callbacks=callbacks)
+
 
     def validate(self, epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names,
                  test_inputs, test_targets, test_targets_one_hot, test_class_names):
@@ -161,8 +170,12 @@ class SiameseEngine():
                             ["siamese_val_accuracy", "siamese_test_accuracy"])
 
         if self.save_weights:
-            # self.net.save_weights(os.path.join(self.results_path, "weights.h5"))
-            self.net.save(os.path.join(self.results_path, "weights.h5"), overwrite=True, include_optimizer=False)
+            self.net_train.save(os.path.join(self.results_path, "saved_model_train"), overwrite=True,
+                                include_optimizer=False)
+            self.net_train.save_weights(os.path.join(self.results_path, "saved_model_train/weights.h5"))
+            self.net_test.save(os.path.join(self.results_path, "saved_model_test"), overwrite=True,
+                                include_optimizer=False)
+            self.net_test.save_weights(os.path.join(self.results_path, "saved_model_test/weights.h5"))
 
     def test(self, train_class_names, val_class_names, test_class_names, train_filenames,
              val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -199,7 +212,7 @@ class SiameseEngine():
 
         for trial in range(self.val_trials):
             start = time.time()
-            probs = self.net.predict([inps[0][trial], inps[1][trial]])[1]
+            probs = self.net_train.predict([inps[0][trial], inps[1][trial]])[1]
             timings[trial] = time.time() - start
             y_pred[trial] = np.argmax(probs)
             probs_std[trial] = np.std(probs)

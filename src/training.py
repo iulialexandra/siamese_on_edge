@@ -15,7 +15,6 @@ def main_cluster(args):
 
 
 def main(args):
-
     plotting = False
     args.plot_confusion = plotting
     args.plot_training_images = plotting
@@ -42,10 +41,10 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.quantization = "nullhop"
+    args.quantization = "edgetpu"
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV44"
-    args.data_path = r"D:\DL\datasets"
+    args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -106,7 +105,9 @@ def parse_args():
                            type=float, default=0.7)
     argparser.add_argument('--siamese_factor', help="How much the siamese similarity should count",
                            type=float, default=1.)
-    argparser.add_argument('--quantization', help="Whether to perform quantization", default=None)
+    argparser.add_argument('--quantization', help="Whether to perform quantization", choices=[None, "edgetpu",
+                                                                                              "nullhop"],
+                           default=None)
     argparser.add_argument('--lr_annealing',
                            help="If set to true, it changes the learning rate at each epoch",
                            type=bool, default=True)
@@ -160,23 +161,23 @@ if __name__ == "__main__":
 
     # strategy = tf.distribute.MirroredStrategy()
     # with strategy.scope():
-        args = parse_args()
+    args = parse_args()
 
-        if args.dataset == "mnist":
-            args.image_dims = (28, 28, 1)
-        elif args.dataset == "omniglot":
-            args.image_dims = (105, 105, 1)
-        elif args.dataset == "cifar100":
-            args.image_dims = (32, 32, 3)
-        elif args.dataset == "roshambo":
-            args.image_dims = (64, 64, 1)
-        elif args.dataset == "tiny-imagenet":
-            args.image_dims = (64, 64, 3)
-        elif args.dataset == "mini-imagenet":
-            args.image_dims = (84, 84, 3)
-        else:
-            print("Dataset not supported.")
+    if args.dataset == "mnist":
+        args.image_dims = (28, 28, 1)
+    elif args.dataset == "omniglot":
+        args.image_dims = (105, 105, 1)
+    elif args.dataset == "cifar100":
+        args.image_dims = (32, 32, 3)
+    elif args.dataset == "roshambo":
+        args.image_dims = (64, 64, 1)
+    elif args.dataset == "tiny-imagenet":
+        args.image_dims = (64, 64, 3)
+    elif args.dataset == "mini-imagenet":
+        args.image_dims = (84, 84, 3)
+    else:
+        print("Dataset not supported.")
 
-        args.dataset_path = os.path.join(args.data_path, args.dataset)
+    args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-        main(args)
+    main(args)
