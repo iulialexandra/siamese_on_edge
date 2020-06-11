@@ -249,7 +249,7 @@ def deploy_dataset_train(filenames, new_labels_dict, batch_size, image_dims, shu
 
     # Map batch data to Keras dictionary input
     dataset_mapped = batched_dataset.map(map_func=tuple_to_dict,
-                                         num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(1000)
+                                         num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(3000)
 
     return dataset_mapped
 

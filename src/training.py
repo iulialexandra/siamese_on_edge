@@ -2,6 +2,7 @@ import argparse
 import tools.utils as util
 import os
 import data_processing.dataset_utils as dat
+import tensorflow as tf
 from models.siamese_engine import SiameseEngine
 
 
@@ -27,7 +28,7 @@ def main(args):
     args.console_print = True
     args.num_epochs = 200
     args.n_val_ways = 5
-    args.evaluate_every = 10
+    args.evaluate_every = 5
     args.n_val_tasks = 1000
     args.batch_size = 128
 
@@ -44,7 +45,7 @@ def main(args):
     args.quantization = None
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/mnt/data/siamese_cluster_new/data"
+    args.data_path = r"D:\DL\datasets"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -156,23 +157,26 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    args = parse_args()
 
-    if args.dataset == "mnist":
-        args.image_dims = (28, 28, 1)
-    elif args.dataset == "omniglot":
-        args.image_dims = (105, 105, 1)
-    elif args.dataset == "cifar100":
-        args.image_dims = (32, 32, 3)
-    elif args.dataset == "roshambo":
-        args.image_dims = (64, 64, 1)
-    elif args.dataset == "tiny-imagenet":
-        args.image_dims = (64, 64, 3)
-    elif args.dataset == "mini-imagenet":
-        args.image_dims = (84, 84, 3)
-    else:
-        print("Dataset not supported.")
+    # strategy = tf.distribute.MirroredStrategy()
+    # with strategy.scope():
+        args = parse_args()
 
-    args.dataset_path = os.path.join(args.data_path, args.dataset)
+        if args.dataset == "mnist":
+            args.image_dims = (28, 28, 1)
+        elif args.dataset == "omniglot":
+            args.image_dims = (105, 105, 1)
+        elif args.dataset == "cifar100":
+            args.image_dims = (32, 32, 3)
+        elif args.dataset == "roshambo":
+            args.image_dims = (64, 64, 1)
+        elif args.dataset == "tiny-imagenet":
+            args.image_dims = (64, 64, 3)
+        elif args.dataset == "mini-imagenet":
+            args.image_dims = (84, 84, 3)
+        else:
+            print("Dataset not supported.")
 
-    main(args)
+        args.dataset_path = os.path.join(args.data_path, args.dataset)
+
+        main(args)
