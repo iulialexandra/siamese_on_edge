@@ -86,8 +86,8 @@ def make_results_dir(args):
     else:
         args.with_classif = "no"
     results_path = os.path.join(save_path, str(date) + "_seed_" + str(args.seed) + "_"
-                                + args.dataset + "_" + args.model + "_quantization_" + args.quantization +
-                                "_classif_" + args.with_classif)
+                                + args.dataset + "_" + args.model + "_quantization_" +
+                                str(args.quantization) + "_classif_" + args.with_classif)
     if not os.path.exists(results_path):
         os.makedirs(results_path)
     logger = initialize_logger(results_path, args.console_print)

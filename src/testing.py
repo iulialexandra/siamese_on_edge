@@ -30,6 +30,7 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
+    args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge_tf2/results/2020_6_11-9_27_57_999818_seed_13_tiny-imagenet_HorizontalNetworkV5_yes_Quantization_None/weights.h5"
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
@@ -55,7 +56,9 @@ def main(args):
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,
     test_class_indices, num_val_samples, num_test_samples) = dat.read_dataset_csv(args.dataset_path, args.n_val_ways)
-    siamese.test(test_class_names, test_filenames, train_class_indices, test_class_indices, num_test_samples)
+    siamese.test(train_class_names, val_class_names, test_class_names, train_filenames,
+                 val_filenames, test_filenames, train_class_indices, val_class_indices,
+                 test_class_indices, num_val_samples, num_test_samples)
 
 def parse_args():
     """Parses arguments specified on the command-line
@@ -113,6 +116,7 @@ def parse_args():
     argparser.add_argument('--plot_val_images',
                            help="If set to true, it plots input validation data",
                            type=bool, default=False)
+    argparser.add_argument('--quantization', help="Whether to perform quantization", default=None)
     argparser.add_argument('--plot_test_images',
                            help="If set to true, it plots input test data",
                            type=bool, default=False)

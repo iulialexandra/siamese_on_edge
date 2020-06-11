@@ -162,8 +162,10 @@ class SiameseEngine():
         for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
 
-            self.net.fit(x=train_dataset, validation_data=None, epochs=self.evaluate_every, initial_epoch=epoch, verbose=2, callbacks=callbacks)
-            self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs, test_targets, test_targets_one_hot, test_class_names)
+            self.net.fit(x=train_dataset, validation_data=None, epochs=self.evaluate_every, initial_epoch=epoch,
+                         verbose=2, callbacks=callbacks)
+            self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs,
+                          test_targets, test_targets_one_hot, test_class_names)
 
     def validate(self, epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names,
                  test_inputs, test_targets, test_targets_one_hot, test_class_names):
