@@ -25,7 +25,7 @@ def main(args):
     args.write_to_tensorboard = False
     args.save_weights = True
     args.console_print = True
-    args.num_epochs = 10000
+    args.num_epochs = 200
     args.n_val_ways = 5
     args.evaluate_every = 10
     args.n_val_tasks = 1000
@@ -41,7 +41,7 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.quantization = False
+    args.quantization = None
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
@@ -105,8 +105,7 @@ def parse_args():
                            type=float, default=0.7)
     argparser.add_argument('--siamese_factor', help="How much the siamese similarity should count",
                            type=float, default=1.)
-    argparser.add_argument('--quantization', help="Whether to perform quantization",
-                           type=bool, default=True)
+    argparser.add_argument('--quantization', help="Whether to perform quantization", default=None)
     argparser.add_argument('--lr_annealing',
                            help="If set to true, it changes the learning rate at each epoch",
                            type=bool, default=True)
