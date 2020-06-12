@@ -12,8 +12,6 @@ from contextlib import redirect_stdout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers import SGD
 from networks.horizontal_nets import *
-from networks.original_nets import *
-from networks.resnets import *
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 
@@ -49,7 +47,8 @@ class SiameseEngine():
         self.siamese_factor = args.siamese_factor
         self.quantization = args.quantization
         self.write_to_tensorboard = args.write_to_tensorboard
-        self.summary_writer = tf.summary.create_file_writer(self.results_path)
+        self.logs_dir = os.path.join(self.results_path, "logs")
+        self.summary_writer = tf.summary.create_file_writer(os.path.join(self.logs_dir, "validate"))
 
     def setup_input_train(self, class_indices, filenames):
         new_labels = list(range(len(class_indices)))
@@ -138,13 +137,21 @@ class SiameseEngine():
             patience=5,
             min_lr=0.5e-6)
 
-        callbacks = [lr_reducer]
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=self.logs_dir,
+                                                              histogram_freq=0,
+                                                              write_graph=True,
+                                                              write_images=False, update_freq='batch',
+                                                              profile_batch=0, embeddings_freq=0,
+                                                              embeddings_metadata=None )
+
+        callbacks = [lr_reducer, tensorboard_callback]
 
         for epoch in range(0, self.num_epochs, self.evaluate_every):
             logger.info("Training epoch {} ...".format(epoch))
 
             self.validate(epoch, val_inputs, val_targets, val_targets_one_hot, val_class_names, test_inputs,
                           test_targets, test_targets_one_hot, test_class_names)
+
             self.net_train.fit(x=train_dataset, validation_data=None, epochs=epoch + self.evaluate_every, initial_epoch=epoch,
                          verbose=2, callbacks=callbacks)
 
@@ -176,6 +183,9 @@ class SiameseEngine():
             self.net_test.save(os.path.join(self.results_path, "saved_model_test"), overwrite=True,
                                 include_optimizer=False)
             self.net_test.save_weights(os.path.join(self.results_path, "saved_model_test/weights.h5"))
+
+        if self.write_to_tensorboard:
+            self._write_logs_to_tensorboard(epoch, val_accuracy, test_accuracy, test_probs_std, test_probs_means)
 
     def test(self, train_class_names, val_class_names, test_class_names, train_filenames,
              val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -252,3 +262,11 @@ class SiameseEngine():
                        np.array(comparison_images, dtype=np.float32)]
         targets = np.argmax(targets_one_hot, axis=1)
         return image_pairs, targets, targets_one_hot
+
+    def _write_logs_to_tensorboard(self, epoch, val_accuracy, test_accuracy, test_probs_std, test_probs_means):
+        """ Writes the logs to a tensorflow log file
+        """
+
+        with self.summary_writer.as_default():
+            tf.summary.scalar('Siamese validation accuracy', val_accuracy, step=epoch)
+            tf.summary.scalar('Siamese test accuracy', test_accuracy, step=epoch)

@@ -8,9 +8,7 @@ import numpy as np
 import signal
 from random import shuffle
 from pathlib import Path
-from networks.original_nets import *
 from networks.horizontal_nets import *
-from networks.resnets import *
 import random as rn
 import tensorflow as tf
 import time

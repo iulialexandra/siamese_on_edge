@@ -22,7 +22,7 @@ def main(args):
     args.plot_test_images = plotting
     args.plot_wrong_preds = plotting
 
-    args.write_to_tensorboard = False
+    args.write_to_tensorboard = True
     args.save_weights = True
     args.console_print = True
     args.num_epochs = 200
@@ -41,7 +41,7 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.quantization = "edgetpu"
+    args.quantization = None
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV44"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
