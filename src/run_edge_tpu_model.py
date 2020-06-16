@@ -60,14 +60,14 @@ set_input(interpreter, (sample_input_1, sample_input_2))
 
 # measure time
 time_collector = []
-for i in range(args.count):
+for i in range(args.count+100):
     start = time.perf_counter()
     interpreter.invoke()
     inference_time = time.perf_counter() - start
 
     print('%.1fms' % (inference_time * 1000), end='\r')
 
-    if i != 0:
+    if i >= 100:
         time_collector.append(inference_time*1000)
 
 print("-"*50)
