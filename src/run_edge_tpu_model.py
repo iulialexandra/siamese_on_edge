@@ -68,6 +68,6 @@ for i in range(args.count):
         time_collector.append(inference_time*1000)
 
 print("-"*50)
-print("Inference Time Mean: {}ms".format(np.mean(time_collector))
-print("Inference Time Std: {}ms".format(np.std(time_collector))
+print("Inference Time Mean: {}ms".format(np.mean(time_collector)))
+print("Inference Time Std: {}ms".format(np.std(time_collector)))
 print("-"*50)
