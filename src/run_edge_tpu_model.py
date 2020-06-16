@@ -30,7 +30,7 @@ def set_input(interpreter, data):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_path", type=str)
-parser.add_argument("--count", type=int, default=10)
+parser.add_argument("--count", type=int, default=100)
 
 args = parser.parse_args()
 
@@ -56,10 +56,18 @@ set_input(interpreter, (sample_input_1, sample_input_2))
 
 
 # measure time
-
-for _ in range(args.count):
+time_collector = []
+for i in range(args.count):
     start = time.perf_counter()
     interpreter.invoke()
     inference_time = time.perf_counter() - start
 
     print('%.1fms' % (inference_time * 1000))
+
+    if i != 0:
+        time_collector.append(inference_time*1000)
+
+print("-"*50)
+print("Inference Time Mean: {}ms".format(np.mean(time_collector))
+print("Inference Time Std: {}ms".format(np.std(time_collector))
+print("-"*50)
