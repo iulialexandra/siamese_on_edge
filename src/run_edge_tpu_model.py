@@ -59,7 +59,7 @@ set_input(interpreter, (sample_input_1, sample_input_2))
 time_collector = []
 for i in range(args.count):
     start = time.perf_counter()
-    interpreter.invoke()
+    [interpreter.invoke for _ in range(5)]
     inference_time = time.perf_counter() - start
 
     print('%.1fms' % (inference_time * 1000), end='\r')

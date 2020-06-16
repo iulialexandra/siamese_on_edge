@@ -53,8 +53,6 @@ def representative_dataset_gen():
     for _ in range(num_calibration_steps):
         # Get sample input data as a numpy array in a method of your choosing.
         image = tf.random.normal([1, 64, 64, 3])
-        #  image = np.random.randint(
-        #      -127, 128, size=(1, 64, 64, 3), dtype=np.int8)
         yield [image, image]
 
 
