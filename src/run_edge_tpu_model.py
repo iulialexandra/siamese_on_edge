@@ -22,7 +22,10 @@ def input_tensor(interpreter):
 
 def set_input(interpreter, data):
     """Copies data to input tensor."""
-    input_tensor(interpreter)[:, :] = data
+    # left
+    interpreter.set_tensor(input_details[0]['index'], data[0])
+    # right
+    interpreter.set_tensor(input_details[1]['index'], data[1])
 
 
 parser = argparse.ArgumentParser()
@@ -44,17 +47,19 @@ print(input_details)
 print(output_details)
 
 
-#  input_shape = [1, 64, 64, 3]
-#
-#  sample_input_1 = np.random.normal(size=input_shape, dtype=np.float32)
-#  sample_input_2 = np.random.normal(size=input_shape, dtype=np.float32)
-#
-#
-#  # measure time
-#
-#  for _ in range(args.count):
-#      start = time.perf_counter()
-#      interpreter.invoke()
-#      inference_time = time.perf_counter() - start
-#
-#      print('%.1fms' % (inference_time * 1000))
+input_shape = [1, 64, 64, 3]
+
+sample_input_1 = np.random.normal(size=input_shape, dtype=np.float32)
+sample_input_2 = np.random.normal(size=input_shape, dtype=np.float32)
+
+set_input(interpreter, (sample_input_1, sample_input_2))
+
+
+# measure time
+
+for _ in range(args.count):
+    start = time.perf_counter()
+    interpreter.invoke()
+    inference_time = time.perf_counter() - start
+
+    print('%.1fms' % (inference_time * 1000))
