@@ -46,11 +46,11 @@ output_details = interpreter.get_output_details()
 print(input_details)
 print(output_details)
 
-
-input_shape = [1, 64, 64, 3]
-
-sample_input_1 = np.random.normal(size=input_shape, dtype=np.float32)
-sample_input_2 = np.random.normal(size=input_shape, dtype=np.float32)
+input_shape = input_details[0]['shape']
+sample_input_1 = np.array(
+    np.random.random_sample(input_shape), dtype=np.float32)
+sample_input_2 = np.array(
+    np.random.random_sample(input_shape), dtype=np.float32)
 
 set_input(interpreter, (sample_input_1, sample_input_2))
 
