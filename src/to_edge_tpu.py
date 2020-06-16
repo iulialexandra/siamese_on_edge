@@ -13,8 +13,6 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
-import tensorflow_model_optimization as tfmot
-
 from networks.edge_tpu_nets import HorizontalNetworkOnEdge
 
 # force to use CPU

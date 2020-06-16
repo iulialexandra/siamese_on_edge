@@ -91,9 +91,10 @@ class HorizontalNetworkOnEdge():
             kernel_initializer="he_normal",
             name='trunk_dense1')(common_branch)
         #  common_branch = Dropout(0.5)(common_branch)
-        trunk_model = Model(
+        self.trunk_model = Model(
             inputs=common_input, outputs=common_branch, name="Trunk_model")
-        return self.quantize_model(trunk_model, quantization)(common_concat)
+        return self.quantize_model(
+            self.trunk_model, quantization)(common_concat)
 
     def build_side_classifier(self, num_outputs, input_layer, name):
         side_classif = Flatten()(input_layer)
@@ -132,14 +133,15 @@ class HorizontalNetworkOnEdge():
 
     def build_edge_net(self, quantization):
 
-        embedding_model = self.build_branch(quantization)
-        encoded_l = embedding_model(self.left_input)
-        encoded_r = embedding_model(self.right_input)
+        self.embedding_model = self.build_branch(quantization)
+        self.encoded_l = self.embedding_model(self.left_input)
+        self.encoded_r = self.embedding_model(self.right_input)
 
-        trunk = self.build_trunk(encoded_l, encoded_r, quantization)
+        self.trunk = self.build_trunk(
+            self.encoded_l, self.encoded_r, quantization)
         #  siamese_classifier = Dense(1, activation='sigmoid',
         #                             name="Siamese_classification")(trunk)
 
         siamese_net_test = Model(inputs=[self.left_input, self.right_input],
-                                 outputs=[trunk])
+                                 outputs=[self.trunk])
         return siamese_net_test

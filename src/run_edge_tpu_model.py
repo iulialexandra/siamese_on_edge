@@ -25,7 +25,10 @@ def set_input(interpreter, data):
     # left
     interpreter.set_tensor(input_details[0]['index'], data[0])
     # right
-    interpreter.set_tensor(input_details[1]['index'], data[1])
+    try:
+        interpreter.set_tensor(input_details[1]['index'], data[1])
+    except Exception:
+        pass
 
 
 parser = argparse.ArgumentParser()
