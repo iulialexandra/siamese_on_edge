@@ -62,7 +62,7 @@ for i in range(args.count):
     interpreter.invoke()
     inference_time = time.perf_counter() - start
 
-    print('%.1fms' % (inference_time * 1000))
+    print('%.1fms' % (inference_time * 1000), end='\r')
 
     if i != 0:
         time_collector.append(inference_time*1000)

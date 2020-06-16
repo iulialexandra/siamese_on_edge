@@ -13,7 +13,8 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
-#  from tensorflow.python.keras.
+import tensorflow_model_optimization as tfmot
+
 from networks.edge_tpu_nets import HorizontalNetworkOnEdge
 
 # force to use CPU
@@ -35,7 +36,7 @@ if args.keras_model != "":
     model = net.build_edge_net(None)
 
     # load weights
-    #  model.load_weights(args.keras_model)
+    model.load_weights(args.keras_model)
     print("[MESSAGE] Model is loaded")
     model.summary()
 

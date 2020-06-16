@@ -27,7 +27,8 @@ class HorizontalNetworkOnEdge():
         elif quantization_type == "nullhop":
             return apply_quantization(model)
         elif quantization_type == "edgetpu":
-            return tfmot.quantization.keras.quantize_model(model)
+            #  return tfmot.quantization.keras.quantize_model(model)
+            return tfmot.quantization.keras.quantize_annotate_model(model)
         else:
             raise ValueError
 
@@ -89,7 +90,7 @@ class HorizontalNetworkOnEdge():
             128, activation="relu", kernel_regularizer=l2(1e-2),
             kernel_initializer="he_normal",
             name='trunk_dense1')(common_branch)
-        common_branch = Dropout(0.5)(common_branch)
+        #  common_branch = Dropout(0.5)(common_branch)
         trunk_model = Model(
             inputs=common_input, outputs=common_branch, name="Trunk_model")
         return self.quantize_model(trunk_model, quantization)(common_concat)
