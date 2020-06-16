@@ -5,60 +5,52 @@ import os
 import data_processing.dataset_utils as dat
 
 
-def main_cluster(args):
-    for s in range(1, 6):
-        args.seed = s
-        args, logger = util.initialize_experiment(args)
-        siamese = SiameseEngine(args)
-        siamese.train(*dat.read_dataset_csv(args.dataset_path, args.n_val_ways))
-
-
 def main(args):
-    plotting = False
-    args.plot_confusion = plotting
-    args.plot_training_images = plotting
-    args.plot_val_images = plotting
-    args.plot_test_images = plotting
-    args.plot_wrong_preds = plotting
-
-    args.write_to_tensorboard = False
-    args.save_weights = True
-    args.console_print = True
-    args.num_epochs = 100
-    args.n_val_ways = 5
-    args.evaluate_every = 10
-    args.n_val_tasks = 1000
-    args.batch_size = 32
-
-    args.final_momentum = 0.9
-    args.momentum_slope = 0.01
-    args.learning_rate = 0.001
-    args.lr_annealing = True
-    args.momentum_annealing = True
-    args.optimizer = "sgd"
-
-    args.left_classif_factor = 0.7
-    args.right_classif_factor = 0.7
-    args.siamese_factor = 1.
-    args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV44"
-    args.data_path = "/mnt/data/siamese_cluster_new/data"
-
-    if args.dataset == "mnist":
-        args.image_dims = (28, 28, 1)
-    elif args.dataset == "omniglot":
-        args.image_dims = (105, 105, 1)
-    elif args.dataset == "cifar100":
-        args.image_dims = (32, 32, 3)
-    elif args.dataset == "roshambo":
-        args.image_dims = (64, 64, 1)
-    elif args.dataset == "tiny-imagenet":
-        args.image_dims = (64, 64, 3)
-    elif args.dataset == "mini-imagenet":
-        args.image_dims = (84, 84, 3)
-    else:
-        print(" Dataset not supported.")
-    args.dataset_path = os.path.join(args.data_path, args.dataset)
+    # plotting = False
+    # args.plot_confusion = plotting
+    # args.plot_training_images = plotting
+    # args.plot_val_images = plotting
+    # args.plot_test_images = plotting
+    # args.plot_wrong_preds = plotting
+    #
+    # args.write_to_tensorboard = False
+    # args.save_weights = True
+    # args.console_print = True
+    # args.num_epochs = 100
+    # args.n_val_ways = 5
+    # args.evaluate_every = 10
+    # args.n_val_tasks = 1000
+    # args.batch_size = 32
+    #
+    # args.final_momentum = 0.9
+    # args.momentum_slope = 0.01
+    # args.learning_rate = 0.001
+    # args.lr_annealing = True
+    # args.momentum_annealing = True
+    # args.optimizer = "sgd"
+    #
+    # args.left_classif_factor = 0.7
+    # args.right_classif_factor = 0.7
+    # args.siamese_factor = 1.
+    # args.dataset = "tiny-imagenet"
+    # args.model = "HorizontalNetworkV44"
+    # args.data_path = "/mnt/data/siamese_cluster_new/data"
+    #
+    # if args.dataset == "mnist":
+    #     args.image_dims = (28, 28, 1)
+    # elif args.dataset == "omniglot":
+    #     args.image_dims = (105, 105, 1)
+    # elif args.dataset == "cifar100":
+    #     args.image_dims = (32, 32, 3)
+    # elif args.dataset == "roshambo":
+    #     args.image_dims = (64, 64, 1)
+    # elif args.dataset == "tiny-imagenet":
+    #     args.image_dims = (64, 64, 3)
+    # elif args.dataset == "mini-imagenet":
+    #     args.image_dims = (84, 84, 3)
+    # else:
+    #     print(" Dataset not supported.")
+    # args.dataset_path = os.path.join(args.data_path, args.dataset)
 
     args, logger = util.initialize_experiment(args)
     siamese = SiameseEngine(args)

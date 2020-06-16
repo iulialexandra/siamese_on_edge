@@ -6,11 +6,10 @@
 #SBATCH --mem-per-cpu=14000
 #SBATCH --array=1-80
 #SBATCH --gres gpu:Tesla-V100:1 --mem=14000
-#SBATCH --output=./exp-logs/fconv-en2cn-run-%a.log
-#SBATCH --error=./exp-logs/fconv-en2cn-run-%a.log
+#SBATCH --output=/data/jlungu/exp-logs/fconv-en2cn-run-%a.log
+#SBATCH --error=/data/jlungu/exp-logs/fconv-en2cn-run-%a.log
 
-source activate icarl
-
-cd $HOME/improved_siamese_cluster
+source activate siamese
+cd /data/jlungu/siamese_on_edge/tasks
 
 make run-${SLURM_ARRAY_TASK_ID}-siamese_exps

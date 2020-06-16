@@ -173,9 +173,6 @@ class HorizontalNetworkV44():
         common_branch = Dropout(0.5)(common_branch)
         siamese_prediction = Dense(1, activation='sigmoid', name="Siamese_classification")(common_branch)
 
-
-
-
         right_branch = Flatten()(encoded_r)
         right_branch = Dense(64, activation="relu", kernel_regularizer=l2(1e-2),
                              kernel_initializer="he_normal", name='right_dense0')(right_branch)
