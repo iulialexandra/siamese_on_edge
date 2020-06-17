@@ -10,7 +10,6 @@ import os
 import argparse
 
 import tensorflow as tf
-import numpy as np
 
 from networks.edge_tpu_nets import HorizontalNetworkOnEdge
 
