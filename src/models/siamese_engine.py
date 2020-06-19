@@ -18,7 +18,6 @@ from tools.modified_sgd import Modified_SGD
 from keras.layers import Input
 from networks.horizontal_nets import *
 from networks.original_nets import *
-from networks.resnets import *
 
 logger = logging.getLogger("siam_logger")
 
@@ -374,8 +373,8 @@ class SiameseEngine():
         self.model_l = Model(input_l, self.left_branch)
         self.model_r = Model(input_r, self.right_branch)
 
-        converted_l = Input(shape=(4096,))
-        converted_r = Input(shape=(4096,))
+        converted_l = Input(shape=self.model_l.output_shape[1:])
+        converted_r = Input(shape=self.model_r.output_shape[1:])
 
         siam_pred, left_classif, right_classif = siamese_model.build_siamese(num_classes, converted_l, converted_r)
 

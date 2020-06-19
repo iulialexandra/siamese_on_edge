@@ -15,7 +15,7 @@ def main(args):
     args.save_weights = True
     args.console_print = True
     args.num_epochs = 100
-    args.n_val_ways = 5
+    args.n_val_ways = 1
     args.evaluate_every = 10
     args.n_val_tasks = 1000
     args.batch_size = 32
@@ -31,7 +31,7 @@ def main(args):
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
+    args.model = "HorizontalNetworkV44"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
@@ -50,7 +50,7 @@ def main(args):
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args)
+    args, logger = util.initialize_experiment(args, train=False)
     siamese = SiameseEngine(args)
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,

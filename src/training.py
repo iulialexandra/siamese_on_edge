@@ -42,8 +42,8 @@ def main(args):
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
     args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
-    args.data_path = r"D:\DL\datasets"
+    args.model = "OriginalNetworkV2"
+    args.data_path = "/mnt/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -61,7 +61,7 @@ def main(args):
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args)
+    args, logger = util.initialize_experiment(args, train=True)
     siamese = SiameseEngine(args)
     siamese.train(*dat.read_dataset_csv(args.dataset_path, args.n_val_ways))
 
