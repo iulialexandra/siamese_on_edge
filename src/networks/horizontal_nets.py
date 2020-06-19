@@ -5,7 +5,8 @@ from tensorflow.keras.regularizers import l2
 from hardware.Quantizer import apply_quantization
 import tensorflow_model_optimization as tfmot
 
-class HorizontalNetworkV44():
+
+class HorizontalNetworkV5():
     def __init__(self, input_shape):
         self.input_shape = input_shape
         self.left_input = Input(self.input_shape, name="Left_input")
@@ -22,54 +23,62 @@ class HorizontalNetworkV44():
             raise ValueError
 
     def build_horizontal_block(self, input, block_name):
-        conv0 = Conv2D(16, (7, 7), padding="same", activation='relu',
+        conv0 = Conv2D(8, (9, 9), padding="same", activation='relu',
                        kernel_initializer="he_normal", name='{}_conv0'.format(block_name),
                        kernel_regularizer=l2(1e-2))(input)
+        conv0 = BatchNormalization(name='{}_conv0_batchnorm'.format(block_name))(conv0)
 
-        conv1 = Conv2D(16, (5, 5), padding="same", activation='relu',
+        conv1 = Conv2D(8, (7, 7), padding="same", activation='relu',
                        kernel_initializer="he_normal", name='{}_conv1'.format(block_name),
                        kernel_regularizer=l2(1e-2))(input)
+        conv1 = BatchNormalization(name='{}_conv1_batchnorm'.format(block_name))(conv1)
 
-        conv2 = Conv2D(16, (3, 3), padding="same", activation='relu',
+        conv2 = Conv2D(8, (5, 5), padding="same", activation='relu',
                        kernel_initializer="he_normal", name='{}_conv2'.format(block_name),
                        kernel_regularizer=l2(1e-2))(input)
+        conv2 = BatchNormalization(name='{}_conv2_batchnorm'.format(block_name))(conv2)
 
-        return concatenate([conv0, conv1, conv2])
+        conv3 = Conv2D(8, (3, 3), padding="same", activation='relu',
+                       kernel_initializer="he_normal", name='{}_conv3'.format(block_name),
+                       kernel_regularizer=l2(1e-2))(input)
+        conv3 = BatchNormalization(name='{}_conv3_batchnorm'.format(block_name))(conv3)
+
+        return concatenate([conv0, conv1, conv2, conv3])
 
     def build_branch(self, quantization):
         net_input = Input(shape=self.input_shape)
 
         convnet = self.build_horizontal_block(net_input, "block0")
         convnet = self.build_horizontal_block(convnet, "block1")
-        convnet = MaxPooling2D(padding="valid")(convnet)
-
         convnet = self.build_horizontal_block(convnet, "block2")
         convnet = self.build_horizontal_block(convnet, "block3")
-        convnet = MaxPooling2D(padding="valid")(convnet)
-
         convnet = self.build_horizontal_block(convnet, "block4")
+        convnet = MaxPooling2D(padding="valid")(convnet)
         convnet = self.build_horizontal_block(convnet, "block5")
+        convnet = MaxPooling2D(padding="valid")(convnet)
         convnet = self.build_horizontal_block(convnet, "block6")
+        convnet = MaxPooling2D(padding="valid")(convnet)
         convnet = self.build_horizontal_block(convnet, "block7")
         convnet = MaxPooling2D(padding="valid")(convnet)
 
         branch_model = Model(inputs=net_input, outputs=convnet, name="Branch_model")
-        return self.quantize_model(branch_model, quantization)
+        quantized_branch = self.quantize_model(branch_model, quantization)
+        quantized_branch.summary()
+        return quantized_branch
 
     def build_trunk(self, left, right, quantization):
         common_concat = concatenate([left, right])
         common_input = Input(shape=common_concat.shape[1:])
-        common_branch = Conv2D(128, (3, 3), padding="same", activation='relu', kernel_initializer="he_normal",
-                               name='trunk_conv1', kernel_regularizer=l2(1e-2))(common_input)
-        common_branch = Conv2D(256, (3, 3), padding="same", activation='relu', kernel_initializer="he_normal",
-                               name='trunk_conv2', kernel_regularizer=l2(1e-2))(common_branch)
-        common_branch = MaxPooling2D(padding="valid")(common_branch)
+        common_branch = Conv2D(512, (3, 3), padding="same", activation='relu',
+                              kernel_initializer="he_normal", name='center_conv1',
+                              kernel_regularizer=l2(1e-2))(common_input)
         common_branch = Flatten()(common_branch)
-        common_branch = Dense(128, activation="relu", kernel_regularizer=l2(1e-2), kernel_initializer="he_normal",
-                              name='trunk_dense1')(common_branch)
+        common_branch = Dense(512, activation="relu", kernel_regularizer=l2(1e-3),
+                              kernel_initializer="he_normal")(common_branch)
         common_branch = Dropout(0.5)(common_branch)
         trunk_model = Model(inputs=common_input, outputs=common_branch, name="Trunk_model")
-        return self.quantize_model(trunk_model, quantization)(common_concat)
+        quantized_trunk = self.quantize_model(trunk_model, quantization)(common_concat)
+        return quantized_trunk
 
     def build_side_classifier(self, num_outputs, input_layer, name):
         side_classif = Flatten()(input_layer)
@@ -148,7 +157,9 @@ class HorizontalNetworkV44():
         convnet = MaxPooling2D(padding="valid")(convnet)
 
         branch_model = Model(inputs=net_input, outputs=convnet, name="Branch_model")
-        return self.quantize_model(branch_model, quantization)
+        quantized_branch = self.quantize_model(branch_model, quantization)
+        quantized_branch.summary()
+        return quantized_branch
 
     def build_trunk(self, left, right, quantization):
         common_concat = concatenate([left, right])
@@ -163,7 +174,8 @@ class HorizontalNetworkV44():
                               name='trunk_dense1')(common_branch)
         common_branch = Dropout(0.5)(common_branch)
         trunk_model = Model(inputs=common_input, outputs=common_branch, name="Trunk_model")
-        return self.quantize_model(trunk_model, quantization)(common_concat)
+        quantized_trunk = self.quantize_model(trunk_model, quantization)(common_concat)
+        return quantized_trunk
 
     def build_side_classifier(self, num_outputs, input_layer, name):
         side_classif = Flatten()(input_layer)

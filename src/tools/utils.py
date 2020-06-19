@@ -131,13 +131,13 @@ def initialize_experiment(args, train=True):
         args.results_path, logger = make_results_dir(args)
         experiment_details(args)
     else:
-        args.results_path = args.checkpoint
+        args.results_path = args.chkpt
         logger = initialize_logger(args.results_path, True)
 
     # make the experiment deterministic
     np.random.seed(args.seed)
     rn.seed(args.seed)
-    tf.random.set_seed(args.seed)
+    # tf.random.set_seed(args.seed)
     os.environ["PYTHONSEED"] = str(args.seed)
     return args, logger
 

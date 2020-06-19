@@ -25,15 +25,15 @@ def main(args):
     args.learning_rate = 0.001
     args.lr_annealing = True
     args.momentum_annealing = True
-    args.optimizer = "sgd"
+    args.optimizer = "adam"
 
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge_tf2/results/2020_6_11-9_27_57_999818_seed_13_tiny-imagenet_HorizontalNetworkV5_yes_Quantization_None/weights.h5"
+    args.chkpt = "../2020_6_18-17_46_6_477160_seed_1_tiny-imagenet_HorizontalNetworkV5_quantization_None_classif_yes"
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/mnt/data/siamese_cluster_new/data"
+    args.data_path = "~/Documents/data"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -51,7 +51,7 @@ def main(args):
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args)
+    args, logger = util.initialize_experiment(args, train=False)
     siamese = SiameseEngine(args)
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,
