@@ -117,7 +117,8 @@ class SiameseEngine():
                 self.net_train.summary()
 
         if self.checkpoint:
-            self.net_train.load_weights(self.checkpoint)
+            self.net_train.load_weights(os.path.join(self.checkpoint, "saved_model_train/weights.h5"))
+
 
     def train(self, train_class_names, val_class_names, test_class_names, train_filenames,
               val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -207,8 +208,10 @@ class SiameseEngine():
             test_class_names)
 
         util.metrics_to_csv(os.path.join(self.results_path, "metrics_inference.csv"), np.asarray([val_accuracy,
-                                                                                                  test_accuracy]),
-                            ["siamese_val_accuracy", "siamese_test_accuracy"])
+                                                                                                  test_accuracy,
+                                                                                                  mean_delay,
+                                                                                                  std_delay]),
+                            ["siamese_val_accuracy", "siamese_test_accuracy", "mean_delay", "std_delay"])
 
     def eval(self, inps, targets, class_names):
         logger.info(

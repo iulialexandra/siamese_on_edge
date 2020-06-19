@@ -27,7 +27,7 @@ def main(args):
     # args.learning_rate = 0.001
     # args.lr_annealing = True
     # args.momentum_annealing = True
-    # args.optimizer = "sgd"
+    # args.optimizer = "adam"
     #
     # args.seed = 1
     # args.left_classif_factor = 0.7
@@ -35,7 +35,7 @@ def main(args):
     # args.siamese_factor = 1.
     # args.quantization = None
     # args.dataset = "tiny-imagenet"
-    # args.model = "HorizontalNetworkV44"
+    # args.model = "HorizontalNetworkV5"
     # args.data_path = "/mnt/data/siamese_cluster_new/data"
     #
     # if args.dataset == "mnist":
@@ -54,7 +54,7 @@ def main(args):
     #     print(" Dataset not supported.")
     # args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args)
+    args, logger = util.initialize_experiment(args, train=True)
     siamese = SiameseEngine(args)
     siamese.train(*dat.read_dataset_csv(args.dataset_path, args.n_val_ways))
 
@@ -64,29 +64,20 @@ def parse_args():
     """
     argparser = argparse.ArgumentParser('Train and eval  siamese networks')
 
-    argparser.add_argument('--batch_size', type=int,
-                           help="The number of images to process at the same time",
+    argparser.add_argument('--batch_size', type=int, help="The number of images to process at the same time",
                            default=128)
-    argparser.add_argument('--n_val_tasks', type=int,
-                           help="how many one-shot tasks to validate on",
-                           default=1000)
+    argparser.add_argument('--n_val_tasks', type=int, help="how many one-shot tasks to validate on", default=1000)
     argparser.add_argument('--n_val_ways', type=int,
-                           help="how many support images we have for each image to be classified",
-                           default=5)
-    argparser.add_argument('--num_epochs', type=int,
-                           help="Number of training epochs",
+                           help="how many support images we have for each image to be classified", default=5)
+    argparser.add_argument('--num_epochs', type=int, help="Number of training epochs",
                            default=200)
-    argparser.add_argument('--evaluate_every', type=int,
-                           help="interval for evaluating on one-shot tasks",
-                           default=5)
+    argparser.add_argument('--evaluate_every', type=int,  help="interval for evaluating on one-shot tasks",
+                           default=10)
     argparser.add_argument('--momentum_slope', type=float,
-                           help="linear epoch slope evolution",
-                           default=0.01)
+                           help="linear epoch slope evolution", default=0.01)
     argparser.add_argument('--final_momentum', type=float,
-                           help="Final layer-wise momentum (mu_j in the paper)",
-                           default=0.9)
-    argparser.add_argument('--learning_rate', type=float,
-                           default=0.001)
+                           help="Final layer-wise momentum (mu_j in the paper)",  default=0.9)
+    argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--seed', help="Random seed to make experiments reproducible",
                            type=int, default=1)
     argparser.add_argument('--left_classif_factor', help="How much left classification loss is"
@@ -97,9 +88,8 @@ def parse_args():
                            type=float, default=0.7)
     argparser.add_argument('--siamese_factor', help="How much the siamese similarity should count",
                            type=float, default=1.)
-    argparser.add_argument('--quantization', help="Whether to perform quantization", choices=[None, "edgetpu",
-                                                                                              "nullhop"],
-                           default=None)
+    argparser.add_argument('--quantization', help="Whether to perform quantization",
+                           choices=[None, "edgetpu", "nullhop"], default=None)
     argparser.add_argument('--lr_annealing',
                            help="If set to true, it changes the learning rate at each epoch",
                            type=bool, default=True)

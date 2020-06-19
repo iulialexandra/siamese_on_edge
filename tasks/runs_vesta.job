@@ -2,10 +2,10 @@
 #SBATCH --ntasks=1
 #SBATCH -A delbruck.ini.uzh
 #SBATCH --partition=vesta
-#SBATCH --time=24:0:0
-#SBATCH --mem-per-cpu=14000
+#SBATCH --time=100:0:0
+#SBATCH --mem-per-cpu=16000
 #SBATCH --array=1-2
-#SBATCH --gres gpu:Tesla-K80:1 --mem=14000
+#SBATCH --gres gpu:Tesla-K80:1 --mem=16000
 #SBATCH --output=/data/jlungu/exp-logs/fconv-en2cn-run-%a.log
 #SBATCH --error=/data/jlungu/exp-logs/fconv-en2cn-run-%a.log
 
