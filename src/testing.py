@@ -30,7 +30,8 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.dataset = "tiny-imagenet"
+    args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge/results/2020_6_18-17_39_50_530697_seed_13_cifar100_HorizontalNetworkV5_yes"
+    args.dataset = "cifar100"
     args.model = "HorizontalNetworkV5"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
 
@@ -50,7 +51,7 @@ def main(args):
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args)
+    args, logger = util.initialize_experiment(args, train=False)
     siamese = SiameseEngine(args)
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,

@@ -112,7 +112,7 @@ class SiameseEngine():
                 self.net.summary()
 
         if self.checkpoint:
-            self.net.load_weights(self.checkpoint)
+            self.net.load_weights(os.path.join(self.checkpoint, "weights.h5"))
 
 
     def train(self, train_class_names, val_class_names, test_class_names, train_filenames,
@@ -227,9 +227,9 @@ class SiameseEngine():
                                                        "".format(epoch)),
                             np.asarray([left_loss, left_acc, right_loss, right_acc,
                                         siamese_loss, siamese_acc, val_accuracy,
-                                        test_accuracy]),
+                                        test_accuracy, mean_delay, std_delay]),
                             ["left_loss", "left_acc", "right_loss", "right_acc", "siamese_loss",
-                             "siamese_acc", "siamese_val_accuracy", "siamese_test_accuracy"]
+                             "siamese_acc", "siamese_val_accuracy", "siamese_test_accuracy", "mean_delay", "std_delay"]
                             )
 
         if self.save_weights:
@@ -309,8 +309,11 @@ class SiameseEngine():
         test_accuracy, test_y_pred, test_predictions, \
         test_probs_std, test_probs_means, delay, std_delay = self.eval(test_inputs, test_targets, test_class_names)
 
-        np.savetxt(os.path.join(self.results_path, "inference.csv"), np.asarray([test_accuracy, delay, std_delay]),
-                   ["test_acc", "mean_delay", "std_delay"])
+        util.metrics_to_csv(os.path.join(self.results_path, "inference.csv"), np.asarray([test_accuracy, delay,
+                            std_delay]),
+                            ["test_acc", "mean_delay", "std_delay"]
+                            )
+
 
     def eval(self, inps, targets, class_names):
 

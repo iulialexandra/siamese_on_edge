@@ -7,7 +7,6 @@ import csv
 import pandas as pd
 import numpy.random as rng
 from random import shuffle
-from skimage.transform import resize
 from data_processing.image_utils import ImageTransformer
 from data_processing.image_utils import load_img, img_to_array
 
@@ -46,7 +45,8 @@ def avi_to_frame_list(avi_filename, video_limit=-1, resize_scale=None):
         data = data[:video_limit]
         expanded_data = [np.expand_dims(im[:, :, 0], 2) for im in data]
         if resize_scale is not None:
-            expanded_data = [resize(im, resize_scale, preserve_range=True) for im in expanded_data]
+            pass
+            # expanded_data = [resize(im, resize_scale, preserve_range=True) for im in expanded_data]
         logging.info('Loaded frames from {}.'.format(avi_filename))
         return expanded_data
 
