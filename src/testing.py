@@ -11,14 +11,21 @@ import tensorflow as tf
 import sys
 
 def main(args):
-    args.write_to_tensorboard = False
+    plotting = False
+    args.plot_confusion = plotting
+    args.plot_training_images = plotting
+    args.plot_val_images = plotting
+    args.plot_test_images = plotting
+    args.plot_wrong_preds = plotting
+
+    args.write_to_tensorboard = True
     args.save_weights = True
     args.console_print = True
-    args.num_epochs = 100
+    args.num_epochs = 200
     args.n_val_ways = 5
-    args.evaluate_every = 10
+    args.evaluate_every = 5
     args.n_val_tasks = 1000
-    args.batch_size = 32
+    args.batch_size = 128
 
     args.final_momentum = 0.9
     args.momentum_slope = 0.01
@@ -27,13 +34,15 @@ def main(args):
     args.momentum_annealing = True
     args.optimizer = "sgd"
 
+    args.seed = 2
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge/results/2020_6_18-17_39_50_530697_seed_13_cifar100_HorizontalNetworkV5_yes"
-    args.dataset = "cifar100"
-    args.model = "HorizontalNetworkV5"
+    args.quantization = "none"
+    args.dataset = "tiny-imagenet"
+    args.model = "HorizontalNetworkV44"
     args.data_path = "/mnt/data/siamese_cluster_new/data"
+    args.chkpt = "../2020_6_22-11_43_43_966415_seed_2_tiny-imagenet_HorizontalNetworkV44_quantization_none_classif_yes"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -51,12 +60,15 @@ def main(args):
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
-    args, logger = util.initialize_experiment(args, train=False)
+    print(tf.version)
+    args, logger = util.initialize_experiment(args, train=True)
     siamese = SiameseEngine(args)
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,
     test_class_indices, num_val_samples, num_test_samples) = dat.read_dataset_csv(args.dataset_path, args.n_val_ways)
-    siamese.test(test_class_names, test_filenames, train_class_indices, test_class_indices, num_test_samples)
+    siamese.test(train_class_names, val_class_names, test_class_names, train_filenames,
+                 val_filenames, test_filenames, train_class_indices, val_class_indices,
+                 test_class_indices, num_val_samples, num_test_samples)
 
 def parse_args():
     """Parses arguments specified on the command-line
@@ -114,6 +126,7 @@ def parse_args():
     argparser.add_argument('--plot_val_images',
                            help="If set to true, it plots input validation data",
                            type=bool, default=False)
+    argparser.add_argument('--quantization', help="Whether to perform quantization", default=None)
     argparser.add_argument('--plot_test_images',
                            help="If set to true, it plots input test data",
                            type=bool, default=False)

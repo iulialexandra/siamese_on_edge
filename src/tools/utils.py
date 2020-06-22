@@ -8,11 +8,9 @@ import numpy as np
 import signal
 from random import shuffle
 from pathlib import Path
-from networks.original_nets import *
 from networks.horizontal_nets import *
-from networks.resnets import *
 import random as rn
-
+import tensorflow as tf
 import time
 import logging
 
@@ -86,7 +84,8 @@ def make_results_dir(args):
     else:
         args.with_classif = "no"
     results_path = os.path.join(save_path, str(date) + "_seed_" + str(args.seed) + "_"
-                                + args.dataset + "_" + args.model + "_" + args.with_classif)
+                                + args.dataset + "_" + args.model + "_quantization_" +
+                                str(args.quantization) + "_classif_" + args.with_classif)
     if not os.path.exists(results_path):
         os.makedirs(results_path)
     logger = initialize_logger(results_path, args.console_print)
@@ -138,7 +137,7 @@ def initialize_experiment(args, train=True):
     # make the experiment deterministic
     np.random.seed(args.seed)
     rn.seed(args.seed)
-    tf.set_random_seed(args.seed)
+    # tf.random.set_seed(args.seed)
     os.environ["PYTHONSEED"] = str(args.seed)
     return args, logger
 
