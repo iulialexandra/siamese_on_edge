@@ -9,6 +9,8 @@ PYTHONPATH="$(shell printenv PYTHONPATH):$(PWD)"
 
 ## siamese experiments
 run-1-siamese_exps:
-	python ../src/training.py --quantization None --seed 1 --dataset "tiny-imagenet" --model "HorizontalNetworkV44" --results_path "/scratch/jlungu/siamese_exps" --data_path "/data/jlungu/siamese_cluster_data_new"
+	python ../src/training.py --quantization "none" --seed 13 --dataset "tiny-imagenet" --model "HorizontalNetworkV44" --results_path "/scratch/jlungu/siamese_exps" --data_path "/data/jlungu/siamese_cluster_data_new"
 run-2-siamese_exps:
-	python ../src/training.py --quantization "nullhop" --seed 1 --dataset "tiny-imagenet" --model "HorizontalNetworkV44" --results_path "/scratch/jlungu/siamese_exps" --data_path "/data/jlungu/siamese_cluster_data_new"
+	python ../src/training.py --quantization "nullhop" --seed 13 --dataset "tiny-imagenet" --model "HorizontalNetworkV44" --results_path "/scratch/jlungu/siamese_exps" --data_path "/data/jlungu/siamese_cluster_data_new"
+run-3-siamese_exps:
+	python ../src/training.py --quantization "edgetpu" --seed 13 --dataset "tiny-imagenet" --model "HorizontalNetworkV44" --results_path "/scratch/jlungu/siamese_exps" --data_path "/data/jlungu/siamese_cluster_data_new"

@@ -137,7 +137,7 @@ def initialize_experiment(args, train=True):
     # make the experiment deterministic
     np.random.seed(args.seed)
     rn.seed(args.seed)
-    # tf.random.set_seed(args.seed)
+    tf.random.set_seed(args.seed)
     os.environ["PYTHONSEED"] = str(args.seed)
     return args, logger
 

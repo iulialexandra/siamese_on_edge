@@ -11,6 +11,7 @@ import data_processing.dataset_utils as dat
 from contextlib import redirect_stdout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers import SGD
+import tempfile
 from networks.horizontal_nets import *
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from tensorflow.keras.callbacks import ReduceLROnPlateau
@@ -117,8 +118,8 @@ class SiameseEngine():
                 self.net_train.summary()
 
         if self.checkpoint:
-            self.net_train.load_weights(os.path.join(self.checkpoint, "saved_model_train/weights.h5"))
-
+            self.net_train.load_weights(os.path.join(self.checkpoint, "weights_train.h5"))
+            self.net_test.load_weights(os.path.join(self.checkpoint, "weights_test.h5"))
 
     def train(self, train_class_names, val_class_names, test_class_names, train_filenames,
               val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -178,12 +179,10 @@ class SiameseEngine():
                             ["siamese_val_accuracy", "siamese_test_accuracy"])
 
         if self.save_weights:
-            self.net_train.save(os.path.join(self.results_path, "saved_model_train"), overwrite=True,
-                                include_optimizer=False)
-            self.net_train.save_weights(os.path.join(self.results_path, "saved_model_train/weights.h5"))
-            self.net_test.save(os.path.join(self.results_path, "saved_model_test"), overwrite=True,
-                                include_optimizer=False)
-            self.net_test.save_weights(os.path.join(self.results_path, "saved_model_test/weights.h5"))
+            train_file = os.path.join(self.results_path, 'weights_train.h5')
+            test_file = os.path.join(self.results_path, 'weights_test.h5')
+            self.net_train.save(train_file)
+            self.net_test.save(test_file)
 
         if self.write_to_tensorboard:
             self._write_logs_to_tensorboard(epoch, val_accuracy, test_accuracy, test_probs_std, test_probs_means)

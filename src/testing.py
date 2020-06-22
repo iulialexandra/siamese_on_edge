@@ -9,49 +9,52 @@ import numpy as np
 from models.siamese_engine import SiameseEngine
 import tensorflow as tf
 import sys
+import tensorflow_model_optimization as tfmot
 
 def main(args):
-    args.write_to_tensorboard = False
-    args.save_weights = True
-    args.console_print = True
-    args.num_epochs = 100
-    args.n_val_ways = 5
-    args.evaluate_every = 10
-    args.n_val_tasks = 1000
-    args.batch_size = 32
-
-    args.final_momentum = 0.9
-    args.momentum_slope = 0.01
-    args.learning_rate = 0.001
-    args.lr_annealing = True
-    args.momentum_annealing = True
-    args.optimizer = "adam"
-
-    args.left_classif_factor = 0.7
-    args.right_classif_factor = 0.7
-    args.siamese_factor = 1.
-    args.chkpt = "../2020_6_18-17_46_6_477160_seed_1_tiny-imagenet_HorizontalNetworkV5_quantization_None_classif_yes"
-    args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
-    args.data_path = "~/Documents/data"
-
-    if args.dataset == "mnist":
-        args.image_dims = (28, 28, 1)
-    elif args.dataset == "omniglot":
-        args.image_dims = (105, 105, 1)
-    elif args.dataset == "cifar100":
-        args.image_dims = (32, 32, 3)
-    elif args.dataset == "roshambo":
-        args.image_dims = (64, 64, 1)
-    elif args.dataset == "tiny-imagenet":
-        args.image_dims = (64, 64, 3)
-    elif args.dataset == "mini-imagenet":
-        args.image_dims = (84, 84, 3)
-    else:
-        print(" Dataset not supported.")
-    args.dataset_path = os.path.join(args.data_path, args.dataset)
+    # args.write_to_tensorboard = False
+    # args.save_weights = True
+    # args.console_print = True
+    # args.num_epochs = 100
+    # args.n_val_ways = 5
+    # args.evaluate_every = 10
+    # args.n_val_tasks = 1000
+    # args.batch_size = 32
+    #
+    # args.final_momentum = 0.9
+    # args.momentum_slope = 0.01
+    # args.learning_rate = 0.001
+    # args.lr_annealing = True
+    # args.momentum_annealing = True
+    # args.optimizer = "sgd"
+    #
+    # args.left_classif_factor = 0.7
+    # args.right_classif_factor = 0.7
+    # args.siamese_factor = 1.
+    # args.quantization = "edgetpu"
+    # args.chkpt = "/mnt/Storage/code/low-shot/siamese_on_edge_tf2/results/2020_6_22-18_9_50_587503_seed_2_tiny-imagenet_HorizontalNetworkV44_quantization_edgetpu_classif_yes"
+    # args.dataset = "tiny-imagenet"
+    # args.model = "HorizontalNetworkV44"
+    # args.data_path = "/mnt/data/siamese_cluster_new/data"
+    #
+    # if args.dataset == "mnist":
+    #     args.image_dims = (28, 28, 1)
+    # elif args.dataset == "omniglot":
+    #     args.image_dims = (105, 105, 1)
+    # elif args.dataset == "cifar100":
+    #     args.image_dims = (32, 32, 3)
+    # elif args.dataset == "roshambo":
+    #     args.image_dims = (64, 64, 1)
+    # elif args.dataset == "tiny-imagenet":
+    #     args.image_dims = (64, 64, 3)
+    # elif args.dataset == "mini-imagenet":
+    #     args.image_dims = (84, 84, 3)
+    # else:
+    #     print(" Dataset not supported.")
+    # args.dataset_path = os.path.join(args.data_path, args.dataset)
 
     args, logger = util.initialize_experiment(args, train=False)
+
     siamese = SiameseEngine(args)
     (train_class_names, val_class_names, test_class_names, train_filenames,
     val_filenames, test_filenames, train_class_indices, val_class_indices,
@@ -65,29 +68,20 @@ def parse_args():
     """
     argparser = argparse.ArgumentParser('Train and eval  siamese networks')
 
-    argparser.add_argument('--batch_size', type=int,
-                           help="The number of images to process at the same time",
-                           default=32)
-    argparser.add_argument('--n_val_tasks', type=int,
-                           help="how many one-shot tasks to validate on",
-                           default=1000)
+    argparser.add_argument('--batch_size', type=int, help="The number of images to process at the same time",
+                           default=128)
+    argparser.add_argument('--n_val_tasks', type=int, help="how many one-shot tasks to validate on", default=1000)
     argparser.add_argument('--n_val_ways', type=int,
-                           help="how many support images we have for each image to be classified",
-                           default=5)
-    argparser.add_argument('--num_epochs', type=int,
-                           help="Number of training epochs",
+                           help="how many support images we have for each image to be classified", default=5)
+    argparser.add_argument('--num_epochs', type=int, help="Number of training epochs",
                            default=200)
-    argparser.add_argument('--evaluate_every', type=int,
-                           help="interval for evaluating on one-shot tasks",
-                           default=5)
+    argparser.add_argument('--evaluate_every', type=int,  help="interval for evaluating on one-shot tasks",
+                           default=10)
     argparser.add_argument('--momentum_slope', type=float,
-                           help="linear epoch slope evolution",
-                           default=0.01)
+                           help="linear epoch slope evolution", default=0.01)
     argparser.add_argument('--final_momentum', type=float,
-                           help="Final layer-wise momentum (mu_j in the paper)",
-                           default=0.9)
-    argparser.add_argument('--learning_rate', type=float,
-                           default=0.001)
+                           help="Final layer-wise momentum (mu_j in the paper)",  default=0.9)
+    argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--seed', help="Random seed to make experiments reproducible",
                            type=int, default=13)
     argparser.add_argument('--left_classif_factor', help="How much left classification loss is"
@@ -98,6 +92,8 @@ def parse_args():
                            type=float, default=0.7)
     argparser.add_argument('--siamese_factor', help="How much the siamese similarity should count",
                            type=float, default=1.)
+    argparser.add_argument('--quantization', help="Whether to perform quantization",
+                           choices=["none", "edgetpu", "nullhop"], default=None)
     argparser.add_argument('--lr_annealing',
                            help="If set to true, it changes the learning rate at each epoch",
                            type=bool, default=True)
@@ -109,14 +105,13 @@ def parse_args():
                            type=str, default='sgd')
     argparser.add_argument('--console_print',
                            help="If set to true, it prints logger info to console.",
-                           type=bool, default=False)
+                           type=bool, default=True)
     argparser.add_argument('--plot_training_images',
                            help="If set to true, it plots input training data",
                            type=bool, default=False)
     argparser.add_argument('--plot_val_images',
                            help="If set to true, it plots input validation data",
                            type=bool, default=False)
-    argparser.add_argument('--quantization', help="Whether to perform quantization", default=None)
     argparser.add_argument('--plot_test_images',
                            help="If set to true, it plots input test data",
                            type=bool, default=False)
@@ -132,7 +127,7 @@ def parse_args():
     argparser.add_argument('--chkpt',
                            help="Path where the weights to load are",
                            default=None)
-    argparser.add_argument('--model', type=str, default="OriginalNetworkV2")
+    argparser.add_argument('--model', type=str, default="HorizontalNetworkV44")
     argparser.add_argument('--save_weights',
                            help="Whether to save the weights at every evaluation",
                            type=bool, default=True)
@@ -141,15 +136,15 @@ def parse_args():
                            type=bool, default=False)
     argparser.add_argument('--dataset',
                            help="The dataset of choice", type=str,
-                           default="roshambo")
+                           default="tiny-imagenet")
     argparser.add_argument('--data_path',
                            help="Path to data", type=str,
                            default="/mnt/data/siamese_cluster_new/data")
     return argparser.parse_args()
 
 
-
 if __name__ == "__main__":
+
     args = parse_args()
 
     if args.dataset == "mnist":
@@ -165,7 +160,8 @@ if __name__ == "__main__":
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
     else:
-        print(" Dataset not supported.")
+        print("Dataset not supported.")
 
     args.dataset_path = os.path.join(args.data_path, args.dataset)
+
     main(args)
