@@ -111,7 +111,7 @@ class BFPQuantizer(Quantizer):
 class BFPWeightQuantizer(BFPQuantizer):
     # Pruning type furnished either as class type and not an object
     # Pruning config furnished as dictionary
-    def __init__(self, num_bits, enable_pruning=False, pruning_type=None, pruning_config=None):
+    def __init__(self, num_bits, enable_pruning=True, pruning_type=None, pruning_config=None):
         super().__init__(num_bits)
 
         self.enable_pruning = enable_pruning
@@ -122,7 +122,7 @@ class BFPWeightQuantizer(BFPQuantizer):
         else:
             self.pruning_config = {
                 "initial_sparsity": 0.0,
-                "final_sparsity": 0.0,
+                "final_sparsity": 0.5,
                 "begin_step": 10,
                 "end_step": 1500 * 20,
                 "frequency": 100
