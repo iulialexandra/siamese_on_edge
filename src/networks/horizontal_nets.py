@@ -13,7 +13,7 @@ class HorizontalNetworkV5():
         self.right_input = Input(self.input_shape, name="Right_input")
 
     def quantize_model(self, model, quantization_type):
-        if quantization_type is None:
+        if quantization_type == "none":
             return model
         elif quantization_type == "nullhop":
             return apply_quantization(model)
@@ -115,7 +115,7 @@ class HorizontalNetworkV44():
         self.right_input = Input(self.input_shape, name="Right_input")
 
     def quantize_model(self, model, quantization_type):
-        if quantization_type is None:
+        if quantization_type == "none":
             return model
         elif quantization_type == "nullhop":
             return apply_quantization(model)

@@ -322,7 +322,7 @@ def read_dataset_csv(dataset_path, val_ways):
     # test data
     test_class_indices = train_indices[-val_ways:]
     test_class_names = train_names[test_class_indices]
-    test_filenames = [join_paths(i, "train") for i in test_class_indices]
+    test_filenames = [join_paths(i, "test") for i in test_class_indices]
     test_num_samples = train_num_samples[test_class_indices]
     num_test_samples = sum(test_num_samples)
 
