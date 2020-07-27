@@ -239,34 +239,34 @@ def sample_class_images(data, labels):
     return sampled_data, unique_labels
 
 
-def read_dataset_csv(dataset_path, val_ways):
-    def join_paths(class_index, phase_data):
-        return os.path.join(dataset_path, "class_{}_{}.tfrecords".format(class_index, phase_data))
-
+def read_dataset_csv(dataset_path, train_classes, val_ways):
     dataset = pd.read_csv(os.path.join(dataset_path, "dataset_description.csv"))
-    train_names = dataset["symbol"].values
-    val_names = train_names.copy()
-    train_num_samples = dataset["train_num_samples"].values
-    val_samples = dataset["test_num_samples"].values
-    train_indices = np.arange(len(train_names))
-    # train data
-    np.random.shuffle(train_indices)
-    train_class_indices = train_indices[:-val_ways]
-    train_class_names = train_names[train_class_indices]
-    train_filenames = [join_paths(i, "train") for i in train_class_indices]
+    shuffled_dataset = dataset.sample(frac=1)
 
+    train_names = shuffled_dataset["symbol"].values
+    val_names = train_names.copy()
+    val_num_samples = shuffled_dataset["test_num_samples"].values
+    train_indices = shuffled_dataset.index.values
+
+    if train_classes == -1:
+        train_classes = len(train_indices) - val_ways
+    assert((train_classes + val_ways) <= len(train_names))
+
+    train_class_indices = train_indices[:train_classes]
+    train_class_names = train_names[train_class_indices]
+    train_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["train_file"][train_class_indices]]
+
+    # classes seen during training
     val_class_indices = np.random.choice(train_class_indices, val_ways, replace=False)
     val_class_names = val_names[val_class_indices]
-    val_num_samples = val_samples[val_class_indices]
-    val_filenames = [join_paths(i, "test") for i in val_class_indices]
-    num_val_samples = sum(val_num_samples)
+    val_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["test_file"][val_class_indices]]
+    num_val_samples = sum(val_num_samples[val_class_indices])
 
-    # test data
+    # classes not used during training
     test_class_indices = train_indices[-val_ways:]
     test_class_names = train_names[test_class_indices]
-    test_filenames = [join_paths(i, "test") for i in test_class_indices]
-    test_num_samples = train_num_samples[test_class_indices]
-    num_test_samples = sum(test_num_samples)
+    test_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["test_file"][test_class_indices]]
+    num_test_samples = sum(val_num_samples[test_class_indices])
 
     return train_class_names, val_class_names, test_class_names, train_filenames, val_filenames, \
            test_filenames, train_class_indices, val_class_indices, test_class_indices, \

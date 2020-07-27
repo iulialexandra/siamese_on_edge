@@ -174,13 +174,13 @@ class HorizontalNetworkV44():
         siamese_prediction = Dense(1, activation='sigmoid', name="Siamese_classification")(common_branch)
 
         right_branch = Flatten()(encoded_r)
-        right_branch = Dense(64, activation="relu", kernel_regularizer=l2(1e-2),
+        right_branch = Dense(512, activation="relu", kernel_regularizer=l2(1e-2),
                              kernel_initializer="he_normal", name='right_dense0')(right_branch)
         right_branch_classif = Dense(num_outputs, activation='softmax',
                                      name="Right_branch_classification")(right_branch)
 
         left_branch = Flatten()(encoded_l)
-        left_branch = Dense(64, activation="relu", kernel_regularizer=l2(1e-2),
+        left_branch = Dense(512, activation="relu", kernel_regularizer=l2(1e-2),
                             kernel_initializer="he_normal", name='left_dense0')(left_branch)
         left_branch_classif = Dense(num_outputs, activation='softmax',
                                     name="Left_branch_classification")(left_branch)
