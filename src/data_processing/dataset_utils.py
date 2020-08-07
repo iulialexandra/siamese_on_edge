@@ -7,6 +7,7 @@ import csv
 import pandas as pd
 import numpy.random as rng
 from random import shuffle
+from collections import namedtuple
 from data_processing.image_utils import ImageTransformer
 from data_processing.image_utils import load_img, img_to_array
 
@@ -77,6 +78,7 @@ def images_to_tfrecord(save_path, train_data, train_labels,
             tf_writer.write(example.SerializeToString())
         tf_writer.close()
         return len(images), filename
+
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     dataset_description = open(os.path.join(save_path, 'dataset_description.csv'), 'w')
@@ -221,8 +223,17 @@ def tfrecords_to_dataset(filenames, new_labels_dict, batch_size, im_size, shuffl
     return dataset
 
 
-def deploy_dataset(filenames, new_labels_dict, batch_size, image_dims, shuffle=True):
-    dataset = tfrecords_to_dataset(filenames, new_labels_dict, batch_size, image_dims, shuffle)
+def make_hashtable(old_labels, new_labels):
+    initializer = tf.contrib.lookup.KeyValueTensorInitializer(
+        tf.convert_to_tensor(old_labels,
+                             dtype=tf.int32),
+        tf.convert_to_tensor(new_labels,
+                             dtype=tf.int32))
+    return tf.contrib.lookup.HashTable(initializer, -1)
+
+
+def deploy_dataset(filenames, table, batch_size, image_dims, shuffle):
+    dataset = tfrecords_to_dataset(filenames, table, batch_size, image_dims, shuffle)
     iterator = dataset.make_initializable_iterator()
     image_batch, label_batch = iterator.get_next()
     labels_one_hot = tf.one_hot(label_batch, len(filenames))
@@ -250,7 +261,12 @@ def read_dataset_csv(dataset_path, train_classes, val_ways):
 
     if train_classes == -1:
         train_classes = len(train_indices) - val_ways
-    assert((train_classes + val_ways) <= len(train_names))
+    assert ((train_classes + val_ways) <= len(train_names))
+
+    DatasetInfo = namedtuple("DatasetInfo", ["train_class_names", "val_class_names", "test_class_names",
+                                             "train_filenames", "val_filenames", "test_filenames",
+                                             "train_class_indices", "val_class_indices", "test_class_indices",
+                                             "num_val_samples", "num_test_samples"])
 
     train_class_indices = train_indices[:train_classes]
     train_class_names = train_names[train_class_indices]
@@ -268,6 +284,6 @@ def read_dataset_csv(dataset_path, train_classes, val_ways):
     test_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["test_file"][test_class_indices]]
     num_test_samples = sum(val_num_samples[test_class_indices])
 
-    return train_class_names, val_class_names, test_class_names, train_filenames, val_filenames, \
-           test_filenames, train_class_indices, val_class_indices, test_class_indices, \
-           num_val_samples, num_test_samples
+    return DatasetInfo(train_class_names, val_class_names, test_class_names, train_filenames, val_filenames,
+                       test_filenames, train_class_indices, val_class_indices, test_class_indices,
+                       num_val_samples, num_test_samples)

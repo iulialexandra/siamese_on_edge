@@ -6,56 +6,57 @@ import data_processing.dataset_utils as dat
 
 
 def main(args):
-    # plotting = False
-    # args.plot_confusion = plotting
-    # args.plot_training_images = plotting
-    # args.plot_val_images = plotting
-    # args.plot_test_images = plotting
-    # args.plot_wrong_preds = plotting
-    #
-    # args.write_to_tensorboard = False
-    # args.save_weights = True
-    # args.console_print = True
-    # args.num_epochs = 200
-    # args.n_val_ways = 5
-    # args.evaluate_every = 10
-    # args.n_val_tasks = 1000
-    # args.batch_size = 32
-    #
-    # args.final_momentum = 0.9
-    # args.momentum_slope = 0.01
-    # args.learning_rate = 0.001
-    # args.lr_annealing = True
-    # args.momentum_annealing = True
-    # args.optimizer = "sgd"
-    #
-    # args.num_train_classes = -1
-    # args.left_classif_factor = 0.7
-    # args.right_classif_factor = 0.7
-    # args.siamese_factor = 1.
-    # args.dataset = "omniglot"
-    # args.model = "OriginalNetworkV2"
-    # args.data_path = "/media/iulialexandra/data/siamese_cluster_new/data"
-    #
-    # if args.dataset == "mnist":
-    #     args.image_dims = (28, 28, 1)
-    # elif args.dataset == "omniglot":
-    #     args.image_dims = (105, 105, 1)
-    # elif args.dataset == "cifar100":
-    #     args.image_dims = (32, 32, 3)
-    # elif args.dataset == "roshambo":
-    #     args.image_dims = (64, 64, 1)
-    # elif args.dataset == "tiny-imagenet":
-    #     args.image_dims = (64, 64, 3)
-    # elif args.dataset == "mini-imagenet":
-    #     args.image_dims = (84, 84, 3)
-    # else:
-    #     print(" Dataset not supported.")
-    # args.dataset_path = os.path.join(args.data_path, args.dataset)
+    plotting = False
+    args.plot_confusion = plotting
+    args.plot_training_images = plotting
+    args.plot_val_images = plotting
+    args.plot_test_images = plotting
+    args.plot_wrong_preds = plotting
+
+    args.write_to_tensorboard = False
+    args.save_weights = True
+    args.console_print = True
+    args.num_epochs = 500
+    args.n_val_ways = 5
+    args.evaluate_every = 10
+    args.n_val_tasks = 1000
+    args.batch_size = 32
+
+    args.final_momentum = 0.9
+    args.momentum_slope = 0.01
+    args.learning_rate = 0.001
+    args.lr_annealing = True
+    args.momentum_annealing = True
+    args.optimizer = "sgd"
+
+    args.num_train_classes = -1
+    args.left_classif_factor = 0.7
+    args.right_classif_factor = 0.7
+    args.siamese_factor = 1.
+    args.dataset = "tiny-imagenet"
+    args.model = "OriginalNetworkV2"
+    args.data_path = "/media/iulialexandra/data/siamese_cluster_new/data"
+
+    if args.dataset == "mnist":
+        args.image_dims = (28, 28, 1)
+    elif args.dataset == "omniglot":
+        args.image_dims = (105, 105, 1)
+    elif args.dataset == "cifar100":
+        args.image_dims = (32, 32, 3)
+    elif args.dataset == "roshambo":
+        args.image_dims = (64, 64, 1)
+    elif args.dataset == "tiny-imagenet":
+        args.image_dims = (64, 64, 3)
+    elif args.dataset == "mini-imagenet":
+        args.image_dims = (84, 84, 3)
+    else:
+        print(" Dataset not supported.")
+    args.dataset_path = os.path.join(args.data_path, args.dataset)
 
     args, logger = util.initialize_experiment(args, train=True)
+    dataset_info = dat.read_dataset_csv(args.dataset_path, args.num_train_classes, args.num_val_ways)
     siamese = SiameseEngine(args)
-    siamese.train(*dat.read_dataset_csv(args.dataset_path, args.num_train_classes, args.n_val_ways))
+    siamese.train(dataset_info)
 
 
 def parse_args():
@@ -66,10 +67,10 @@ def parse_args():
     argparser.add_argument('--batch_size', type=int,
                            help="The number of images to process at the same time",
                            default=32)
-    argparser.add_argument('--n_val_tasks', type=int,
+    argparser.add_argument('--num_val_trials', type=int,
                            help="how many one-shot tasks to validate on",
                            default=1000)
-    argparser.add_argument('--n_val_ways', type=int,
+    argparser.add_argument('--num_val_ways', type=int,
                            help="how many support images we have for each image to be classified",
                            default=5)
     argparser.add_argument('--num_epochs', type=int,
@@ -128,7 +129,7 @@ def parse_args():
     argparser.add_argument('--results_path',
                            help="Path to results. If none, the folder gets created with"
                                 "current date and time", default=None)
-    argparser.add_argument('--chkpt',
+    argparser.add_argument('--checkpoint',
                            help="Path where the weights to load are",
                            default=None)
     argparser.add_argument('--model', type=str, default="OriginalNetworkV2")
