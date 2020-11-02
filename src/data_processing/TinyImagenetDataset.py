@@ -114,9 +114,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_path", help="Path to the dataset",
-                        default="/mnt/data/datasets/tiny-imagenet")
+                        default="/media/iulialexandra/data/tiny-imagenet")
     parser.add_argument("--tfrecs_path", help="Path to where to save the tfrecords",
-                        default="/mnt/data/datasets/siamese_cluster_data_new/tiny-imagenet")
+                        default="/media/iulialexandra/data/siamese_cluster_data_new/tiny-imagenet")
     parser.add_argument('--rotation_range',
                         default=15.)
     parser.add_argument('--width_shift_range',

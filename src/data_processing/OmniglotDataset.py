@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.misc import imread
+from imageio import imread
 import os
 import argparse
 from data_processing.dataset_utils import augment_dataset, images_to_tfrecord
@@ -25,7 +25,7 @@ class OmniglotDataset(object):
         self.load_data()
 
     def load_data(self):
-        data_path = "/mnt/data/datasets/omniglot/all_alphabets"
+        data_path = os.path.join(self.dataset_path, "all_alphabets")
         train_data, train_labels, test_data, test_labels, class_names_dict = \
             self.load_symbols(data_path)
 
@@ -104,9 +104,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_path", help="Path to the dataset",
-                        default="/mnt/data/datasets/omniglot")
+                        default="/media/iulialexandra/data/omniglot")
     parser.add_argument("--tfrecs_path", help="Path to where to save the tfrecords",
-                        default="/mnt/data/datasets/siamese_cluster_data_new/omniglot")
+                        default="/media/iulialexandra/data/siamese_cluster_data_new/omniglot_2")
     parser.add_argument('--rotation_range',
                         default=15.)
     parser.add_argument('--width_shift_range',

@@ -16,8 +16,9 @@ def main(args):
     args.write_to_tensorboard = False
     args.save_weights = True
     args.console_print = True
-    args.num_epochs = 500
-    args.n_val_ways = 5
+    args.num_epochs = 200
+    args.num_val_ways = 5
+    args.num_shots = 1
     args.evaluate_every = 10
     args.n_val_tasks = 1000
     args.batch_size = 32
@@ -33,8 +34,9 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
+    args.seed = 4
     args.dataset = "tiny-imagenet"
-    args.model = "OriginalNetworkV2"
+    args.model = "HorizontalNetworkV5"
     args.data_path = "/media/iulialexandra/data/siamese_cluster_new/data"
 
     if args.dataset == "mnist":
@@ -71,6 +73,9 @@ def parse_args():
                            help="how many one-shot tasks to validate on",
                            default=1000)
     argparser.add_argument('--num_val_ways', type=int,
+                           help="how many many classes we have at test time",
+                           default=5)
+    argparser.add_argument('--num_shots', type=int,
                            help="how many support images we have for each image to be classified",
                            default=5)
     argparser.add_argument('--num_epochs', type=int,
@@ -88,7 +93,7 @@ def parse_args():
     argparser.add_argument('--learning_rate', type=float,
                            default=0.001)
     argparser.add_argument('--seed', help="Random seed to make experiments reproducible",
-                           type=int, default=13)
+                           type=int, default=1)
     argparser.add_argument('--left_classif_factor', help="How much left classification loss is"
                                                          " weighted in the total loss",
                            type=float, default=0.7)
@@ -110,7 +115,7 @@ def parse_args():
                            type=str, default='sgd')
     argparser.add_argument('--console_print',
                            help="If set to true, it prints logger info to console.",
-                           type=bool, default=False)
+                           type=bool, default=True)
     argparser.add_argument('--plot_training_images',
                            help="If set to true, it plots input training data",
                            type=bool, default=False)
