@@ -19,6 +19,7 @@ from tools.modified_sgd import Modified_SGD
 from networks.horizontal_nets import *
 from networks.original_nets import *
 from networks.resnets import *
+from networks.feature_extractor_nets import *
 
 logger = logging.getLogger("siam_logger")
 
@@ -351,22 +352,22 @@ class SiameseEngine():
             chosen_indices = rng.choice(range(len(labels)), size=self.batch_size, replace=False)
             left_labels = labels[chosen_indices]
             right_labels = []
-            image_pairs[:, 0, :, :, :] = images[chosen_indices]
+            image_pairs[:, 0, ...] = images[chosen_indices]
             for i, index in enumerate(chosen_indices):
                 comparative_lbl = labels[index]
                 if targets[i] == 0:
                     pair_index = rng.choice(np.where(labels != comparative_lbl)[0], size=(1,))[0]
-                    image_pairs[i, 1, :, :, :] = images[pair_index]
+                    image_pairs[i, 1, ...] = images[pair_index]
                     right_labels.append(labels[pair_index])
                 elif targets[i] == 1:
                     pair_index = rng.choice(np.where(labels == comparative_lbl)[0], size=(1,))[0]
-                    image_pairs[i, 1, :, :, :] = images[pair_index]
+                    image_pairs[i, 1, ...] = images[pair_index]
                     right_labels.append(labels[pair_index])
             right_labels = np.array(right_labels)
             right_labels = to_categorical(right_labels, num_classes=num_train_cls)
             left_labels = to_categorical(left_labels, num_classes=num_train_cls)
 
-            return (image_pairs[:, 0, :, :, :], image_pairs[:, 1, :, :, :],
+            return (image_pairs[:, 0, ...], image_pairs[:, 1, ...],
                     left_labels, np.expand_dims(targets, 1), right_labels)
 
     def _make_kshot_task(self, n_val_tasks, image_data, labels, n_ways):
@@ -388,8 +389,8 @@ class SiameseEngine():
                 cls_indices = np.where(labels == cls)[0]
                 comparison_indices[:, i] = rng.choice(cls_indices, size=(n_val_tasks, self.num_shots),
                                                       replace=True)
-            comparison_images = image_data[comparison_indices, :, :, :]
-            reference_images = image_data[reference_indices, np.newaxis, np.newaxis, :, :, :]
+            comparison_images = image_data[comparison_indices, ...]
+            reference_images = image_data[reference_indices, np.newaxis, np.newaxis, ...]
             reference_images = np.repeat(reference_images, n_ways, axis=1)
             reference_images = np.repeat(reference_images, self.num_shots, axis=2)
             image_pairs = [np.array(reference_images, dtype=np.float32),

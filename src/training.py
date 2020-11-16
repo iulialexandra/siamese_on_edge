@@ -30,14 +30,14 @@ def main(args):
     args.momentum_annealing = True
     args.optimizer = "sgd"
 
-    args.num_train_classes = -1
+    # args.num_train_classes = -1
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.seed = 4
+    args.seed = 1
     args.dataset = "tiny-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/media/iulialexandra/data/siamese_cluster_new/data"
+    args.data_path = "/media/iulialexandra/data/siamese_data_results/tfrecs"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -149,7 +149,7 @@ def parse_args():
                            default="roshambo")
     argparser.add_argument('--data_path',
                            help="Path to data", type=str,
-                           default="/media/iulialexandra/data/siamese_cluster_new/data")
+                           default="/media/iulialexandra/data/siamese_data_results/tfrecs")
     return argparser.parse_args()
 
 
@@ -168,8 +168,25 @@ if __name__ == "__main__":
         args.image_dims = (64, 64, 3)
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
+    elif args.dataset == "tiny-resnet101":
+        args.image_dims =  [1, 8192]
+    elif args.dataset == "tiny-resnet50":
+        args.image_dims = [2, 2, 2048]
+    elif args.dataset == "tiny-simclr-r101":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r152":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r50":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-resnet50":
+        args.image_dims = [2, 2, 2048]
+    elif args.dataset == "tiny-resnet101":
+        args.image_dims = [1, 8192]
     else:
         print(" Dataset not supported.")
 
     args.dataset_path = os.path.join(args.data_path, args.dataset)
-    main(args)
+    for s in range(25, 200, 25):
+        args = parse_args()
+        args.num_train_classes = s
+        main(args)
