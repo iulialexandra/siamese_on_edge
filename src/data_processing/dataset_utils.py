@@ -52,53 +52,63 @@ def avi_to_frame_list(avi_filename, video_limit=-1, resize_scale=None):
         return expanded_data
 
 
-def images_to_tfrecord(save_path, train_data, train_labels,
-                       test_data, test_labels, class_names_dict,
-                       train_augment, test_augment, **kwargs):
-    def save_tfrecs(cls_idx, mode, data, labels, augment):
-        curr_label_id = np.where(labels == cls_idx)[0]
-        images = data[curr_label_id]
-        filename = "class_{}_{}.tfrecords".format(cls_idx, mode)
-        if type(images[0]) not in [str, np.str_] and augment:
-            images = augment_dataset(images, augment, **kwargs)
-
-        tf_writer = tf.python_io.TFRecordWriter(os.path.join(save_path, filename))
-        for image in images:
-            if type(image) in [str, np.str_]:
-                image = img_to_array(load_img(image))
-            image_dims = np.shape(image)
-            image_raw = image.astype(np.uint8)
-            image_raw = image_raw.tostring()
-            example = tf.train.Example(features=tf.train.Features(feature={
-                'height': _int64_feature(image_dims[-3]),
-                'width': _int64_feature(image_dims[-2]),
-                'depth': _int64_feature(image_dims[-1]),
-                'label': _int64_feature(int(cls_idx)),
-                'image_raw': _bytes_feature(image_raw)}))
-            tf_writer.write(example.SerializeToString())
-        tf_writer.close()
-        return len(images), filename
-
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    dataset_description = open(os.path.join(save_path, 'dataset_description.csv'), 'w')
-    with dataset_description:
-        fields = ["symbol", "train_file", "test_file", "train_num_samples", "test_num_samples"]
-        csv_writer = csv.DictWriter(dataset_description, fieldnames=fields)
+def images_to_tfrecord(record_path, data_array, labels, class_names_dict, mode, augment,
+                       augmentation_limit, **kwargs):
+    lengths_file = open(os.path.join(record_path, '{}.csv'.format(mode)), 'w')
+    with lengths_file:
+        fields = ['class_idx', 'class_name', 'num_samples']
+        csv_writer = csv.DictWriter(lengths_file, fieldnames=fields)
         csv_writer.writeheader()
+        assert type(labels) == np.ndarray
+        if type(data_array[0]) not in [str, np.str_]:
+            im_type = "arrays"
+        elif type(data_array[0]) in [str, np.str_] and ".npy" in data_array[0]:
+            im_type = "features"
+        else:
+            im_type = "lists"
+        assert np.array_equal(np.array(sorted(list(class_names_dict.keys()))), np.unique(labels))
         for cls_idx in sorted(list(class_names_dict.keys())):
-            train_num, train_filename = save_tfrecs(cls_idx, "train",
-                                                    train_data, train_labels,
-                                                    train_augment)
-            test_num, test_filename = save_tfrecs(cls_idx, "test",
-                                                  test_data, test_labels,
-                                                  test_augment)
-
-            csv_writer.writerow({"symbol": class_names_dict[cls_idx],
-                                 "train_file": train_filename,
-                                 "test_file": test_filename,
-                                 "train_num_samples": train_num,
-                                 "test_num_samples": test_num})
+            filename = os.path.join(record_path, "class_{}_{}.tfrecords".format(cls_idx, mode))
+            curr_label_id = np.where(labels == cls_idx)[0]
+            images = data_array[curr_label_id]
+            if im_type == "arrays" and augment is True:
+                images = augment_dataset(images, augmentation_limit, **kwargs)
+            csv_writer.writerow({'class_idx': cls_idx, 'class_name': class_names_dict[cls_idx],
+                                 'num_samples': len(images)})
+            tf_writer = tf.python_io.TFRecordWriter(filename)
+            for image in images:
+                if im_type == "lists":
+                    image_raw = img_to_array(load_img(image))
+                    image_dims = np.shape(image)
+                    image_raw = image_raw.tostring()
+                    fts = {
+                        'height': _int64_feature(image_dims[-3]),
+                        'width': _int64_feature(image_dims[-2]),
+                        'depth': _int64_feature(image_dims[-1]),
+                        'label': _int64_feature(int(cls_idx)),
+                        'image_raw': _bytes_feature(image_raw)}
+                elif im_type == "features":
+                    image_raw = np.load(image)[0]
+                    image_dims = np.shape(image_raw)
+                    image_raw = image_raw.tostring()
+                    fts = {'depth': _int64_feature(image_dims[-1]),
+                           'label': _int64_feature(int(cls_idx)),
+                           'image_raw': _bytes_feature(image_raw)}
+                elif im_type == "arrays":
+                    image_dims = np.shape(image)
+                    image_raw = image
+                    image_raw = image_raw.tostring()
+                    fts = {
+                        'height': _int64_feature(image_dims[-3]),
+                        'width': _int64_feature(image_dims[-2]),
+                        'depth': _int64_feature(image_dims[-1]),
+                        'label': _int64_feature(int(cls_idx)),
+                        'image_raw': _bytes_feature(image_raw)}
+                if im_type in ["lists", "arrays"]:
+                    image_raw = image_raw.astype(np.uint8)
+                example = tf.train.Example(features=tf.train.Features(feature=fts))
+                tf_writer.write(example.SerializeToString())
+            tf_writer.close()
 
 
 def augment_dataset(data, limit_num, **kwargs):
@@ -154,23 +164,31 @@ def parser(record, new_labels_dict, image_dims, resize_dims):
             repeated_tensor = tf.reshape(tiled_tensor, tf.shape(tensor) * repeats)
         return repeated_tensor
 
-    with tf.device('/cpu:0'):
-        features = tf.parse_single_example(record,
-                                           features={
-                                               'height': tf.FixedLenFeature([], tf.int64),
-                                               'width': tf.FixedLenFeature([], tf.int64),
-                                               'depth': tf.FixedLenFeature([], tf.int64),
-                                               'image_raw': tf.FixedLenFeature([], tf.string),
-                                               'label': tf.FixedLenFeature([], tf.int64),
-                                           })
+    if len(image_dims) <= 2:
+        fts = {'depth': tf.FixedLenFeature([], tf.int64),
+               'image_raw': tf.FixedLenFeature([], tf.string),
+               'label': tf.FixedLenFeature([], tf.int64),
+               }
+    elif len(image_dims) == 3:
+        fts = {
+            'height': tf.FixedLenFeature([], tf.int64),
+            'width': tf.FixedLenFeature([], tf.int64),
+            'depth': tf.FixedLenFeature([], tf.int64),
+            'image_raw': tf.FixedLenFeature([], tf.string),
+            'label': tf.FixedLenFeature([], tf.int64),
+        }
 
+    with tf.device('/cpu:0'):
+        features = tf.parse_single_example(record, features=fts)
         label = tf.cast(features["label"], tf.int32)
         new_label = new_labels_dict.lookup(label)
-
         image_shape = tf.stack(list(image_dims))
-        image = tf.decode_raw(features["image_raw"], tf.uint8)
-        image = tf.cast(image, tf.float16)
-        image = tf.scalar_mul(1 / (2 ** 8), image)
+        if len(image_dims) <= 2:
+            image = tf.decode_raw(features["image_raw"], tf.float32)
+        elif len(image_dims) == 3:
+            image = tf.decode_raw(features["image_raw"], tf.uint8)
+            image = tf.cast(image, tf.float32)
+            image = tf.scalar_mul(1 / (2 ** 8), image)
         image = tf.reshape(image, image_shape)
 
         if resize_dims is not None:
@@ -250,40 +268,41 @@ def sample_class_images(data, labels):
     return sampled_data, unique_labels
 
 
-def read_dataset_csv(dataset_path, train_classes, val_ways):
-    dataset = pd.read_csv(os.path.join(dataset_path, "dataset_description.csv"))
-    shuffled_dataset = dataset.sample(frac=1)
+def read_dataset_csv(dataset_path, val_ways):
+    def join_paths(class_index, phase_data):
+        return os.path.join(dataset_path, "class_{}_{}.tfrecords".format(class_index, phase_data))
 
-    train_names = shuffled_dataset["symbol"].values
-    val_names = train_names.copy()
-    val_num_samples = shuffled_dataset["test_num_samples"].values
-    train_indices = shuffled_dataset.index.values
+    train_dataset = pd.read_csv(os.path.join(dataset_path, "train.csv"))
+    shuffled_dataset = train_dataset.sample(frac=1)
+    train_class_names = shuffled_dataset["class_name"].values
+    train_num_samples = shuffled_dataset["num_samples"].values
+    train_class_indices = shuffled_dataset.index.values
 
-    if train_classes == -1:
-        train_classes = len(train_indices) - val_ways
-    assert ((train_classes + val_ways) <= len(train_names))
+    test_dataset = pd.read_csv(os.path.join(dataset_path, "test.csv"))
+    test_names = test_dataset["class_name"].values
+    test_samples = test_dataset["num_samples"].values
+    test_indices = test_dataset.index.values
 
+    # train data
+    train_filenames = [join_paths(i, "train") for i in train_class_indices]
+
+    # validation data
+    val_class_indices = np.random.choice(train_class_indices, val_ways, replace=False)
+    val_class_names = train_class_names[val_class_indices]
+    val_num_samples = train_num_samples[val_class_indices]
+    val_filenames = [join_paths(i, "train") for i in val_class_indices]
+    num_val_samples = sum(val_num_samples)
+
+    # test data
+    test_class_indices = np.random.choice(test_indices, val_ways, replace=False)
+    test_class_names = test_names[test_class_indices]
+    test_filenames = [join_paths(i, "test") for i in test_class_indices]
+    test_num_samples = test_samples[test_class_indices]
+    num_test_samples = sum(test_num_samples)
     DatasetInfo = namedtuple("DatasetInfo", ["train_class_names", "val_class_names", "test_class_names",
                                              "train_filenames", "val_filenames", "test_filenames",
                                              "train_class_indices", "val_class_indices", "test_class_indices",
                                              "num_val_samples", "num_test_samples"])
-
-    train_class_indices = train_indices[:train_classes]
-    train_class_names = train_names[train_class_indices]
-    train_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["train_file"][train_class_indices]]
-
-    # classes seen during training
-    val_class_indices = np.random.choice(train_class_indices, val_ways, replace=False)
-    val_class_names = val_names[val_class_indices]
-    val_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["test_file"][val_class_indices]]
-    num_val_samples = sum(val_num_samples[val_class_indices])
-
-    # classes not used during training
-    test_class_indices = train_indices[-val_ways:]
-    test_class_names = train_names[test_class_indices]
-    test_filenames = [os.path.join(dataset_path, i) for i in shuffled_dataset["test_file"][test_class_indices]]
-    num_test_samples = sum(val_num_samples[test_class_indices])
-
     return DatasetInfo(train_class_names, val_class_names, test_class_names, train_filenames, val_filenames,
                        test_filenames, train_class_indices, val_class_indices, test_class_indices,
                        num_val_samples, num_test_samples)

@@ -17,9 +17,8 @@ def main(args):
     args.save_weights = True
     args.console_print = True
     args.num_epochs = 200
-    args.num_val_ways = 5
-    args.num_shots = 1
-    args.evaluate_every = 10
+    args.n_val_ways = 5
+    args.evaluate_every = 5
     args.n_val_tasks = 1000
     args.batch_size = 32
 
@@ -34,11 +33,10 @@ def main(args):
     args.left_classif_factor = 0.7
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
-    args.seed = 4
-    args.dataset = "tiny-imagenet"
+    args.seed = 1
+    args.dataset = "mini-imagenet"
     args.model = "HorizontalNetworkV5"
-    args.data_path = "/media/iulialexandra/data/siamese_cluster_new/data"
-
+    args.data_path = "/media/iulialexandra/data/siamese_data_results/tfrecs"
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
     elif args.dataset == "omniglot":
@@ -51,12 +49,22 @@ def main(args):
         args.image_dims = (64, 64, 3)
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
+    elif args.dataset == "tiny-resnet101":
+        args.image_dims =  [8192]
+    elif args.dataset == "tiny-simclr-r101_1x_sk0":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r152_1x_sk0":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r50_1x_sk1":
+        args.image_dims = [2048]
+    elif args.dataset == "mini-simclr-r101":
+        args.image_dims = [2048]
     else:
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
 
     args, logger = util.initialize_experiment(args, train=True)
-    dataset_info = dat.read_dataset_csv(args.dataset_path, args.num_train_classes, args.num_val_ways)
+    dataset_info = dat.read_dataset_csv(args.dataset_path, args.num_val_ways)
     siamese = SiameseEngine(args)
     siamese.train(dataset_info)
 
@@ -149,7 +157,7 @@ def parse_args():
                            default="roshambo")
     argparser.add_argument('--data_path',
                            help="Path to data", type=str,
-                           default="/media/iulialexandra/data/siamese_cluster_new/data")
+                           default="/media/iulialexandra/data/siamese_data_results/tfrecs")
     return argparser.parse_args()
 
 
@@ -168,6 +176,16 @@ if __name__ == "__main__":
         args.image_dims = (64, 64, 3)
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
+    elif args.dataset == "tiny-resnet101":
+        args.image_dims =  [8192]
+    elif args.dataset == "tiny-simclr-r101":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r152":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r50":
+        args.image_dims = [2048]
+    elif args.dataset == "mini-simclr-r101":
+        args.image_dims = [2048]
     else:
         print(" Dataset not supported.")
 
