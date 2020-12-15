@@ -125,16 +125,18 @@ class SimclrNetV1:
         self.right_input = Input(self.input_shape, name="Right_input")
 
     def build_net(self, num_outputs):
-        convnet = Sequential()
-        convnet.add(Dense(4096, activation="relu", kernel_regularizer=l2(1e-3),
-                          kernel_initializer="he_normal"))
-        convnet.add(Dense(1024, activation="relu", kernel_regularizer=l2(1e-3),
-                          kernel_initializer="he_normal"))
-        convnet.add(Dense(512, activation="relu", kernel_regularizer=l2(1e-3),
-                          kernel_initializer="he_normal"))
+        net_input = Input(shape=self.input_shape)
+        net = Dense(4096, activation="relu", kernel_regularizer=l2(1e-3),
+                          kernel_initializer="he_normal")(net_input)
+        net = Dense(1024, activation="relu", kernel_regularizer=l2(1e-3),
+                          kernel_initializer="he_normal")(net)
+        net = Dense(512, activation="relu", kernel_regularizer=l2(1e-3),
+                          kernel_initializer="he_normal")(net)
 
-        encoded_l = convnet(self.left_input)
-        encoded_r = convnet(self.right_input)
+        embedding = Model(inputs=net_input, outputs=net)
+
+        encoded_l = embedding(self.left_input)
+        encoded_r = embedding(self.right_input)
 
         DistanceLayer = Lambda(lambda tensors: tf.square(tensors[0] - tensors[1]))
         # call this layer on list of two input tensors.
@@ -161,4 +163,4 @@ class SimclrNetV1:
                             loss_weights={"Left_branch_classification": self.left_classif_factor,
                                           "Siamese_classification": self.siamese_factor,
                                           "Right_branch_classification": self.right_classif_factor})
-        return siamese_net
+        return siamese_net, embedding

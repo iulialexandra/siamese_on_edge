@@ -157,8 +157,8 @@ def parser(record, new_labels_dict, image_dims, resize_dims):
     with tf.device('/cpu:0'):
         features = tf.parse_single_example(record,
                                            features={
-                                               'height': tf.FixedLenFeature([], tf.int64),
-                                               'width': tf.FixedLenFeature([], tf.int64),
+                                               # 'height': tf.FixedLenFeature([], tf.int64),
+                                               # 'width': tf.FixedLenFeature([], tf.int64),
                                                'depth': tf.FixedLenFeature([], tf.int64),
                                                'image_raw': tf.FixedLenFeature([], tf.string),
                                                'label': tf.FixedLenFeature([], tf.int64),
@@ -168,9 +168,9 @@ def parser(record, new_labels_dict, image_dims, resize_dims):
         new_label = new_labels_dict.lookup(label)
 
         image_shape = tf.stack(list(image_dims))
-        image = tf.decode_raw(features["image_raw"], tf.uint8)
-        image = tf.cast(image, tf.float16)
-        image = tf.scalar_mul(1 / (2 ** 8), image)
+        image = tf.decode_raw(features["image_raw"], tf.float32)
+        # image = tf.cast(image, tf.float32)
+        # image = tf.scalar_mul(1 / (2 ** 8), image)
         image = tf.reshape(image, image_shape)
 
         if resize_dims is not None:

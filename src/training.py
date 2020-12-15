@@ -35,9 +35,11 @@ def main(args):
     args.right_classif_factor = 0.7
     args.siamese_factor = 1.
     args.seed = 1
-    args.dataset = "tiny-imagenet"
-    args.model = "HorizontalNetworkV5"
+    args.dataset = "tiny-simclr-r101_1x_sk0"
+    # args.model = "HorizontalNetworkV5_features"
+    args.model = "SimclrNetV1"
     args.data_path = "/media/iulialexandra/data/siamese_data_results/tfrecs"
+    # args.checkpoint = "/media/iulialexandra/Storage/code/low-shot/siamese_on_edge/results/2020_12_7-19_45_55_8063_seed_1_tiny-imagenet_HorizontalNetworkV5_features_yes"
 
     if args.dataset == "mnist":
         args.image_dims = (28, 28, 1)
@@ -51,6 +53,16 @@ def main(args):
         args.image_dims = (64, 64, 3)
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
+    elif args.dataset == "tiny-resnet101":
+        args.image_dims =  [8192]
+    elif args.dataset == "tiny-resnet50":
+        args.image_dims = [2, 2, 2048]
+    elif args.dataset == "tiny-simclr-r101_1x_sk0":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r152":
+        args.image_dims = [2048]
+    elif args.dataset == "tiny-simclr-r50":
+        args.image_dims = [2048]
     else:
         print(" Dataset not supported.")
     args.dataset_path = os.path.join(args.data_path, args.dataset)
@@ -169,7 +181,7 @@ if __name__ == "__main__":
     elif args.dataset == "mini-imagenet":
         args.image_dims = (84, 84, 3)
     elif args.dataset == "tiny-resnet101":
-        args.image_dims =  [1, 8192]
+        args.image_dims =  [8192]
     elif args.dataset == "tiny-resnet50":
         args.image_dims = [2, 2, 2048]
     elif args.dataset == "tiny-simclr-r101":
@@ -178,15 +190,9 @@ if __name__ == "__main__":
         args.image_dims = [2048]
     elif args.dataset == "tiny-simclr-r50":
         args.image_dims = [2048]
-    elif args.dataset == "tiny-resnet50":
-        args.image_dims = [2, 2, 2048]
-    elif args.dataset == "tiny-resnet101":
-        args.image_dims = [1, 8192]
     else:
         print(" Dataset not supported.")
 
     args.dataset_path = os.path.join(args.data_path, args.dataset)
-    for s in range(25, 200, 25):
-        args = parse_args()
-        args.num_train_classes = s
-        main(args)
+    args = parse_args()
+    main(args)

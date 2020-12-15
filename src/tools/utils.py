@@ -10,6 +10,7 @@ from random import shuffle
 from pathlib import Path
 from networks.original_nets import *
 from networks.horizontal_nets import *
+from networks.feature_extractor_nets import *
 from networks.resnets import *
 import random as rn
 

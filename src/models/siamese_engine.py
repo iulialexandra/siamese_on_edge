@@ -20,6 +20,8 @@ from networks.horizontal_nets import *
 from networks.original_nets import *
 from networks.resnets import *
 from networks.feature_extractor_nets import *
+from sklearn.manifold import TSNE
+from keras.models import Model
 
 logger = logging.getLogger("siam_logger")
 
@@ -87,7 +89,7 @@ class SiameseEngine():
                                 self.left_classif_factor,
                                 self.right_classif_factor,
                                 self.siamese_factor)
-        self.net = siamese_network.build_net(num_classes)
+        self.net, self.feature_model = siamese_network.build_net(num_classes)
 
         with open(os.path.join(self.results_path, 'modelsummary.txt'), 'w') as f:
             with redirect_stdout(f):
@@ -198,7 +200,8 @@ class SiameseEngine():
         if not os.path.exists(epoch_folder):
             os.makedirs(epoch_folder)
 
-        eval_val = self.eval(val_inputs, val_targets, val_targets_one_hot, val_class_names, val_labels_left, val_labels_right)
+        eval_val = self.eval(epoch, "validation",val_inputs, val_targets, val_targets_one_hot, val_class_names,
+                             val_labels_left, val_labels_right)
 
         logger.info("Siamese {} way {}-shot accuracy on known classes: {}% on classes {}"
                     "".format(self.num_val_ways, self.num_shots, eval_val.siam_accuracy * 100, val_class_names))
@@ -207,7 +210,8 @@ class SiameseEngine():
         logger.info("Right classifier {} way accuracy: {}%"
                     "".format(self.num_val_ways, eval_val.right_accuracy * 100))
 
-        eval_test = self.eval(test_inputs, test_targets, test_targets_one_hot, test_class_names, test_labels_left, test_labels_right)
+        eval_test = self.eval(epoch, "test", test_inputs, test_targets, test_targets_one_hot, test_class_names,
+                              test_labels_left, test_labels_right)
         logger.info("Siamese {} way {}-shot accuracy on novel classes: {}% on classes {}"
                     "".format(self.num_val_ways, self.num_shots, eval_test.siam_accuracy * 100, test_class_names))
 
@@ -301,7 +305,7 @@ class SiameseEngine():
         util.metrics_to_csv(os.path.join(self.results_path, "inference.csv"), np.asarray([eval_results.siam_accuracy]),
                             ["test_acc"])
 
-    def eval(self, inps, targets, targets_one_hot, class_names, eval_labels_left, eval_labels_right):
+    def eval(self, epoch, mode, inps, targets, targets_one_hot, class_names, eval_labels_left, eval_labels_right):
         logger.info(
             "Evaluating model on {} random {} way one-shot learning tasks from classes {}"
             "...".format(self.num_val_trials, self.num_val_ways, class_names))
@@ -338,8 +342,27 @@ class SiameseEngine():
         EvalResults = namedtuple("EvalResults", ["siam_accuracy", "siamese_preds", "interm_preds",
                                                  "siam_probs_std", "siam_probs_means", "left_accuracy",
                                                  "right_accuracy"])
+        self.plot_emb_tsne(inps, eval_labels_left, mode, epoch)
         return EvalResults(siam_accuracy, siamese_preds, interm_preds, siam_probs_std, siam_probs_means,
                            np.mean(left_acc), np.mean(right_acc))
+
+
+    def plot_emb_tsne(self, inputs, labels, mode, epoch):
+        num_trials = 1000
+        tsne = TSNE(n_iter=4000, perplexity=30)
+        embeddings = []
+        labs = np.ravel(labels[:num_trials])
+        for trial in range(num_trials):
+            embeddings.append(self.feature_model.predict(inputs[0][trial, :, 0]))
+        embs = np.vstack(embeddings)
+        embeds_plots_folder = os.path.join(self.results_path, "tsne_embeds")
+        if not os.path.exists(embeds_plots_folder):
+            os.makedirs(embeds_plots_folder)
+        np.save(os.path.join(embeds_plots_folder, "{}_embeddings_epoch_{}".format(mode, str(epoch))),
+                [embs, labels])
+        tsne_embeds = tsne.fit_transform(embs)
+        vis.scatter(tsne_embeds, labs, mode, epoch, embeds_plots_folder)
+
 
     def _get_train_balanced_batch(self, images, labels, num_train_cls):
         with tf.device('/cpu:0'):
